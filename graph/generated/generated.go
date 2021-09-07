@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -40,6 +41,7 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
+	Authorization func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -248,14 +250,16 @@ type CheckCookies {
 }
 
 type Query {
-    getJdCookies: [Cookies!]!
-    checkCookies: [CheckCookies!]!
+    getJdCookies: [Cookies!]! @Authorization
+    checkCookies: [CheckCookies!]! @Authorization
 }
 
 type Mutation {
-    cronAddJob(spec: String,cmd:String):Int
-    cronDelJob(jobId:Int):Int
-}`, BuiltIn: false},
+    cronAddJob(spec: String,cmd:String):Int @Authorization
+    cronDelJob(jobId:Int):Int @Authorization
+}
+
+directive @Authorization on FIELD_DEFINITION`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -583,8 +587,28 @@ func (ec *executionContext) _Mutation_cronAddJob(ctx context.Context, field grap
 	}
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CronAddJob(rctx, args["spec"].(*string), args["cmd"].(*string))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().CronAddJob(rctx, args["spec"].(*string), args["cmd"].(*string))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authorization == nil {
+				return nil, errors.New("directive Authorization is not implemented")
+			}
+			return ec.directives.Authorization(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*int); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *int`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -622,8 +646,28 @@ func (ec *executionContext) _Mutation_cronDelJob(ctx context.Context, field grap
 	}
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CronDelJob(rctx, args["jobId"].(*int))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().CronDelJob(rctx, args["jobId"].(*int))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authorization == nil {
+				return nil, errors.New("directive Authorization is not implemented")
+			}
+			return ec.directives.Authorization(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*int); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *int`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -654,8 +698,28 @@ func (ec *executionContext) _Query_getJdCookies(ctx context.Context, field graph
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().GetJdCookies(rctx)
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().GetJdCookies(rctx)
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authorization == nil {
+				return nil, errors.New("directive Authorization is not implemented")
+			}
+			return ec.directives.Authorization(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.([]*model.Cookies); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be []*github.com/teeoo/baipiao/graph/model.Cookies`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -689,8 +753,28 @@ func (ec *executionContext) _Query_checkCookies(ctx context.Context, field graph
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().CheckCookies(rctx)
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().CheckCookies(rctx)
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authorization == nil {
+				return nil, errors.New("directive Authorization is not implemented")
+			}
+			return ec.directives.Authorization(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.([]*model.CheckCookies); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be []*github.com/teeoo/baipiao/graph/model.CheckCookies`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)

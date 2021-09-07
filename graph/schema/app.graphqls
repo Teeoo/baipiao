@@ -12,11 +12,13 @@ type CheckCookies {
 }
 
 type Query {
-    getJdCookies: [Cookies!]!
-    checkCookies: [CheckCookies!]!
+    getJdCookies: [Cookies!]! @Authorization
+    checkCookies: [CheckCookies!]! @Authorization
 }
 
 type Mutation {
-    cronAddJob(spec: String,cmd:String):Int
-    cronDelJob(jobId:Int):Int
+    cronAddJob(spec: String,cmd:String):Int @Authorization
+    cronDelJob(jobId:Int):Int @Authorization
 }
+
+directive @Authorization on FIELD_DEFINITION

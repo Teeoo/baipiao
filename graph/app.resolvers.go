@@ -1,34 +1,19 @@
 package graph
 
+// This file will be automatically regenerated based on the schema, any resolver implementations
+// will be copied through when generating and any unknown code will be moved to the end.
+
 import (
 	"context"
 	"fmt"
 	"github.com/guonaihong/gout"
-	"github.com/robfig/cron/v3"
-	generated1 "github.com/teeoo/baipiao/graph/generated"
+	cron "github.com/robfig/cron/v3"
+	"github.com/teeoo/baipiao/graph/generated"
 	"github.com/teeoo/baipiao/graph/model"
 	"github.com/teeoo/baipiao/typefac"
 	"net/http"
 	"net/url"
 )
-
-var c = cron.New(cron.WithParser(cron.NewParser(cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)))
-
-var data []*model.Cookies
-
-type newUserInfo struct {
-	Code           string `json:"code"`
-	Uts            string `json:"uts"`
-	UserPlusStatus bool   `json:"userPlusStatus"`
-	UserInfoSns    string `json:"userInfoSns"`
-	Enc            int    `json:"enc"`
-	NoModifyText   string `json:"noModifyText"`
-	CloseReminder  struct {
-		CardSubTitle  string `json:"cardSubTitle"`
-		TempCardTitle string `json:"tempCardTitle"`
-		CardTitle     string `json:"cardTitle"`
-	} `json:"closeReminder"`
-}
 
 func (r *mutationResolver) CronAddJob(ctx context.Context, spec *string, cmd *string) (*int, error) {
 	school := typefac.CreateInstance(fmt.Sprintf("jd.%s", *cmd), nil).(School)
@@ -80,12 +65,35 @@ func (r *queryResolver) CheckCookies(ctx context.Context) ([]*model.CheckCookies
 	return check, nil
 }
 
-func (r *Resolver) Mutation() generated1.MutationResolver { return &mutationResolver{r} }
+// Mutation returns generated.MutationResolver implementation.
+func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 
-func (r *Resolver) Query() generated1.QueryResolver { return &queryResolver{r} }
+// Query returns generated.QueryResolver implementation.
+func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
-
 type queryResolver struct{ *Resolver }
 
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
 
+var c = cron.New(cron.WithParser(cron.NewParser(cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)))
+var data []*model.Cookies
+
+type newUserInfo struct {
+	Code           string `json:"code"`
+	Uts            string `json:"uts"`
+	UserPlusStatus bool   `json:"userPlusStatus"`
+	UserInfoSns    string `json:"userInfoSns"`
+	Enc            int    `json:"enc"`
+	NoModifyText   string `json:"noModifyText"`
+	CloseReminder  struct {
+		CardSubTitle  string `json:"cardSubTitle"`
+		TempCardTitle string `json:"tempCardTitle"`
+		CardTitle     string `json:"cardTitle"`
+	} `json:"closeReminder"`
+}
