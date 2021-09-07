@@ -1,0 +1,22 @@
+type Cookies {
+    pt_key: String!
+    pt_pin: String!
+    ws_key:String
+    remark: String
+}
+
+type CheckCookies {
+    user:String!
+    check:String!
+
+}
+
+type Query {
+    getJdCookies: [Cookies!]!
+    checkCookies: [CheckCookies!]!
+}
+
+type Mutation {
+    cronAddJob(spec: String,cmd:String):Int
+    cronDelJob(jobId:Int):Int
+}
