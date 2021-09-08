@@ -9,6 +9,7 @@ require (
 	github.com/go-playground/locales v0.13.0 // indirect
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/go-playground/validator/v10 v10.4.1 // indirect
+	github.com/go-redis/redis v6.15.9+incompatible // indirect
 	github.com/go-resty/resty/v2 v2.6.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.0.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
