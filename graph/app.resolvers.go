@@ -6,13 +6,14 @@ package graph
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
+
 	"github.com/guonaihong/gout"
 	cron "github.com/robfig/cron/v3"
 	"github.com/teeoo/baipiao/graph/generated"
 	"github.com/teeoo/baipiao/graph/model"
 	"github.com/teeoo/baipiao/typefac"
-	"net/http"
-	"net/url"
 )
 
 func (r *mutationResolver) CronAddJob(ctx context.Context, spec *string, cmd *string) (*int, error) {
@@ -80,7 +81,6 @@ type queryResolver struct{ *Resolver }
 //  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
 //    it when you're done.
 //  - You have helper methods in this file. Move them out to keep these resolver files clean.
-
 var c = cron.New(cron.WithParser(cron.NewParser(cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)))
 var data []*model.Cookies
 
