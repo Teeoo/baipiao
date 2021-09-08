@@ -1,24 +1,39 @@
 type Cookies {
     pt_key: String!
     pt_pin: String!
-    ws_key:String
+    ws_key: String
     remark: String
 }
 
 type CheckCookies {
-    user:String!
-    check:String!
-
+    user: String!
+    check: String!
 }
 
 type Query {
+    login(user: String, pwd: String): String!
+    addJdCookies(cookie: InputCookie!): Cookies! @Authorization
     getJdCookies: [Cookies!]! @Authorization
     checkCookies: [CheckCookies!]! @Authorization
 }
 
 type Mutation {
-    cronAddJob(spec: String,cmd:String):Int @Authorization
-    cronDelJob(jobId:Int):Int @Authorization
+    cronAddJob(spec: String, cmd: String): Int @Authorization
+    cronDelJob(jobId: Int): Int @Authorization
 }
+
+type Subscription {
+    log(jobId: Int!): JSON!
+}
+
+input InputCookie {
+    pt_key: String!
+    pt_pin: String!
+    ws_key: String
+    remark: String
+    qq: String
+}
+
+scalar JSON
 
 directive @Authorization on FIELD_DEFINITION

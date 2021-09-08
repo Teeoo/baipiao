@@ -13,3 +13,11 @@ type Cookies struct {
 	WsKey  *string `json:"ws_key"`
 	Remark *string `json:"remark"`
 }
+
+type InputCookie struct {
+	PtKey  string  `json:"pt_key"`
+	PtPin  string  `json:"pt_pin"`
+	WsKey  *string `json:"ws_key"`
+	Remark *string `json:"remark"`
+	Qq     *string `json:"qq"`
+}
