@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "github.com/teeoo/baipiao/gqlgen"
+	_ "github.com/teeoo/baipiao/init"
 	_ "github.com/teeoo/baipiao/jd"
 	"log"
 	"net/http"

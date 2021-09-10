@@ -6,23 +6,23 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
+	"github.com/go-redis/redis/v8"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/teeoo/baipiao/cache"
+	. "github.com/teeoo/baipiao/cache"
+	Config2 "github.com/teeoo/baipiao/config"
 	. "github.com/teeoo/baipiao/graph"
 	. "github.com/teeoo/baipiao/graph/generated"
 	. "github.com/teeoo/baipiao/middleware"
 	"github.com/vektah/gqlparser/v2/gqlerror"
-	"log"
 	"net/http"
 	"strings"
-	"time"
 )
 
+type Cache struct {
+	client redis.UniversalClient
+}
+
 func init() {
-	c, err := cache.NewCache("127.0.0.1:6379", 24*time.Hour)
-	if err != nil {
-		log.Fatalf("cannot create APQ redis cache: %v", err)
-	}
 	cfg := Config{Resolvers: &Resolver{}}
 	cfg.Directives.Authorization = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
 		authHeader := ctx.Value("Authorization")
@@ -47,7 +47,7 @@ func init() {
 			})
 			return nil, nil
 		}
-		_, err := parseToken(authHeaderParts[1], "e3ffb9840f367eb8f5d8c579b813ea35d0689c04")
+		_, err := parseToken(authHeaderParts[1], Config2.Config.Jwt.JWT_SECRET)
 		if err != nil {
 			graphql.AddError(ctx, &gqlerror.Error{
 				Path:    graphql.GetPath(ctx),
@@ -62,8 +62,20 @@ func init() {
 	}
 	handle := handler.NewDefaultServer(NewExecutableSchema(cfg))
 	handle.AddTransport(transport.POST{})
-	handle.Use(extension.AutomaticPersistedQuery{Cache: c})
+	handle.Use(extension.AutomaticPersistedQuery{Cache: &Cache{client: Redis}})
 	http.Handle("/graphql", Jwt(handle))
+}
+
+func (c *Cache) Add(ctx context.Context, key string, value interface{}) {
+	c.client.Set(ctx, key, value, 0)
+}
+
+func (c *Cache) Get(ctx context.Context, key string) (interface{}, bool) {
+	s, err := c.client.Get(ctx, key).Result()
+	if err != nil {
+		return struct{}{}, false
+	}
+	return s, true
 }
 
 func parseToken(token string, secret string) (jwt.Claims, error) {

@@ -1,7 +1,7 @@
 package logger
 
 var (
-	_      error
+	_ error
 )
 
 func init() {

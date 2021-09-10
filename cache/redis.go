@@ -3,38 +3,24 @@ package cache
 import (
 	"context"
 	"fmt"
-	"github.com/go-redis/redis"
-	"time"
+	"github.com/go-redis/redis/v8"
+	Config "github.com/teeoo/baipiao/config"
+	"log"
+	"strconv"
 )
 
-type Cache struct {
-	client redis.UniversalClient
-	ttl    time.Duration
-}
+var Redis *redis.Client
 
-const prefix = "gql:"
-
-func NewCache(redisAddress string, ttl time.Duration) (*Cache, error) {
-	client := redis.NewClient(&redis.Options{
-		Addr: redisAddress,
+func init() {
+	Redis = redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%s", Config.Config.Redis.Addr, strconv.FormatInt(int64(Config.Config.Redis.Port), 10)),
+		Password: Config.Config.Redis.Password,
+		DB:       1,
 	})
-
-	err := client.Ping().Err()
+	pong, err := Redis.Ping(context.Background()).Result()
 	if err != nil {
-		return nil, fmt.Errorf("could not create cache: %w", err)
+		log.Println("redis 连接失败：", pong, err)
+		return
 	}
-
-	return &Cache{client: client, ttl: ttl}, nil
-}
-
-func (c *Cache) Add(ctx context.Context, key string, value interface{}) {
-	c.client.Set(prefix+key, value, c.ttl)
-}
-
-func (c *Cache) Get(ctx context.Context, key string) (interface{}, bool) {
-	s, err := c.client.Get(prefix + key).Result()
-	if err != nil {
-		return struct{}{}, false
-	}
-	return s, true
+	log.Println("redis 连接成功:", pong)
 }

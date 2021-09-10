@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 )
+
 // LuaVMRun ...
 func LuaVMRun(parms []interface{}) {
 	L := lua.NewState(lua.Options{SkipOpenLibs: true})

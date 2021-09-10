@@ -5,15 +5,21 @@ package graph
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"net/http"
-	"net/url"
-
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/guonaihong/gout"
-	cron "github.com/robfig/cron/v3"
+	"github.com/robfig/cron/v3"
+	. "github.com/teeoo/baipiao/cache"
+	. "github.com/teeoo/baipiao/config"
 	"github.com/teeoo/baipiao/graph/generated"
 	"github.com/teeoo/baipiao/graph/model"
 	"github.com/teeoo/baipiao/typefac"
+	"golang.org/x/crypto/bcrypt"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
 )
 
 func (r *mutationResolver) CronAddJob(ctx context.Context, spec *string, cmd *string) (*int, error) {
@@ -32,7 +38,20 @@ func (r *mutationResolver) CronDelJob(ctx context.Context, jobID *int) (*int, er
 }
 
 func (r *queryResolver) Login(ctx context.Context, user *string, pwd *string) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	value, _ := Redis.Get(ctx, "baipiao:auth").Result()
+	err := bcrypt.CompareHashAndPassword([]byte(strings.Split(value, ":")[1]), []byte(*pwd))
+	if err != nil {
+		return "", errors.New("用户名或密码不正确")
+	}
+	if strings.Split(value, ":")[0] == *user && err == nil {
+		token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, &jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(7 * 24 * time.Hour).Unix(),
+			IssuedAt:  time.Now().Unix(),
+			Id:        *user,
+		}).SignedString([]byte(Config.Jwt.JWT_SECRET))
+		return token, err
+	}
+	return "", err
 }
 
 func (r *queryResolver) AddJdCookies(ctx context.Context, cookie model.InputCookie) (*model.Cookies, error) {
