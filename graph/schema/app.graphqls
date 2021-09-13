@@ -12,12 +12,12 @@ type CheckCookies {
 
 type Query {
     login(user: String, pwd: String): String!
-    addJdCookies(cookie: InputCookie!): Cookies! @Authorization
     getJdCookies: [Cookies!]! @Authorization
     checkCookies: [CheckCookies!]! @Authorization
 }
 
 type Mutation {
+    addJdCookies(cookie: InputCookie!): Cookies! @Authorization
     cronAddJob(spec: String, cmd: String): Int @Authorization
     cronDelJob(jobId: Int): Int @Authorization
 }

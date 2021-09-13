@@ -60,12 +60,12 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		CronAddJob func(childComplexity int, spec *string, cmd *string) int
-		CronDelJob func(childComplexity int, jobID *int) int
+		AddJdCookies func(childComplexity int, cookie model.InputCookie) int
+		CronAddJob   func(childComplexity int, spec *string, cmd *string) int
+		CronDelJob   func(childComplexity int, jobID *int) int
 	}
 
 	Query struct {
-		AddJdCookies func(childComplexity int, cookie model.InputCookie) int
 		CheckCookies func(childComplexity int) int
 		GetJdCookies func(childComplexity int) int
 		Login        func(childComplexity int, user *string, pwd *string) int
@@ -77,12 +77,12 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
+	AddJdCookies(ctx context.Context, cookie model.InputCookie) (*model.Cookies, error)
 	CronAddJob(ctx context.Context, spec *string, cmd *string) (*int, error)
 	CronDelJob(ctx context.Context, jobID *int) (*int, error)
 }
 type QueryResolver interface {
 	Login(ctx context.Context, user *string, pwd *string) (string, error)
-	AddJdCookies(ctx context.Context, cookie model.InputCookie) (*model.Cookies, error)
 	GetJdCookies(ctx context.Context) ([]*model.Cookies, error)
 	CheckCookies(ctx context.Context) ([]*model.CheckCookies, error)
 }
@@ -147,6 +147,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Cookies.WsKey(childComplexity), true
 
+	case "Mutation.addJdCookies":
+		if e.complexity.Mutation.AddJdCookies == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addJdCookies_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddJdCookies(childComplexity, args["cookie"].(model.InputCookie)), true
+
 	case "Mutation.cronAddJob":
 		if e.complexity.Mutation.CronAddJob == nil {
 			break
@@ -170,18 +182,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.CronDelJob(childComplexity, args["jobId"].(*int)), true
-
-	case "Query.addJdCookies":
-		if e.complexity.Query.AddJdCookies == nil {
-			break
-		}
-
-		args, err := ec.field_Query_addJdCookies_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.AddJdCookies(childComplexity, args["cookie"].(model.InputCookie)), true
 
 	case "Query.checkCookies":
 		if e.complexity.Query.CheckCookies == nil {
@@ -316,12 +316,12 @@ type CheckCookies {
 
 type Query {
     login(user: String, pwd: String): String!
-    addJdCookies(cookie: InputCookie!): Cookies! @Authorization
     getJdCookies: [Cookies!]! @Authorization
     checkCookies: [CheckCookies!]! @Authorization
 }
 
 type Mutation {
+    addJdCookies(cookie: InputCookie!): Cookies! @Authorization
     cronAddJob(spec: String, cmd: String): Int @Authorization
     cronDelJob(jobId: Int): Int @Authorization
 }
@@ -348,6 +348,21 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_addJdCookies_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.InputCookie
+	if tmp, ok := rawArgs["cookie"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cookie"))
+		arg0, err = ec.unmarshalNInputCookie2githubᚗcomᚋteeooᚋbaipiaoᚋgraphᚋmodelᚐInputCookie(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["cookie"] = arg0
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_cronAddJob_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -400,21 +415,6 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_addJdCookies_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 model.InputCookie
-	if tmp, ok := rawArgs["cookie"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cookie"))
-		arg0, err = ec.unmarshalNInputCookie2githubᚗcomᚋteeooᚋbaipiaoᚋgraphᚋmodelᚐInputCookie(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["cookie"] = arg0
 	return args, nil
 }
 
@@ -699,6 +699,68 @@ func (ec *executionContext) _Cookies_remark(ctx context.Context, field graphql.C
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_addJdCookies(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_addJdCookies_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().AddJdCookies(rctx, args["cookie"].(model.InputCookie))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authorization == nil {
+				return nil, errors.New("directive Authorization is not implemented")
+			}
+			return ec.directives.Authorization(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.Cookies); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/teeoo/baipiao/graph/model.Cookies`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Cookies)
+	fc.Result = res
+	return ec.marshalNCookies2ᚖgithubᚗcomᚋteeooᚋbaipiaoᚋgraphᚋmodelᚐCookies(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Mutation_cronAddJob(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -857,68 +919,6 @@ func (ec *executionContext) _Query_login(ctx context.Context, field graphql.Coll
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Query_addJdCookies(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_addJdCookies_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Query().AddJdCookies(rctx, args["cookie"].(model.InputCookie))
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Authorization == nil {
-				return nil, errors.New("directive Authorization is not implemented")
-			}
-			return ec.directives.Authorization(ctx, nil, directive0)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.(*model.Cookies); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/teeoo/baipiao/graph/model.Cookies`, tmp)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.Cookies)
-	fc.Result = res
-	return ec.marshalNCookies2ᚖgithubᚗcomᚋteeooᚋbaipiaoᚋgraphᚋmodelᚐCookies(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_getJdCookies(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1289,6 +1289,41 @@ func (ec *executionContext) ___Directive_args(ctx context.Context, field graphql
 	res := resTmp.([]introspection.InputValue)
 	fc.Result = res
 	return ec.marshalN__InputValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐInputValueᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) ___Directive_isRepeatable(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "__Directive",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsRepeatable, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___EnumValue_name(ctx context.Context, field graphql.CollectedField, obj *introspection.EnumValue) (ret graphql.Marshaler) {
@@ -2243,7 +2278,10 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 func (ec *executionContext) unmarshalInputInputCookie(ctx context.Context, obj interface{}) (model.InputCookie, error) {
 	var it model.InputCookie
-	var asMap = obj.(map[string]interface{})
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
 
 	for k, v := range asMap {
 		switch k {
@@ -2384,6 +2422,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Mutation")
+		case "addJdCookies":
+			out.Values[i] = ec._Mutation_addJdCookies(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "cronAddJob":
 			out.Values[i] = ec._Mutation_cronAddJob(ctx, field)
 		case "cronDelJob":
@@ -2423,20 +2466,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_login(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
-		case "addJdCookies":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_addJdCookies(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -2530,6 +2559,11 @@ func (ec *executionContext) ___Directive(ctx context.Context, sel ast.SelectionS
 			}
 		case "args":
 			out.Values[i] = ec.___Directive_args(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "isRepeatable":
+			out.Values[i] = ec.___Directive_isRepeatable(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -2799,6 +2833,13 @@ func (ec *executionContext) marshalNCheckCookies2ᚕᚖgithubᚗcomᚋteeooᚋba
 
 	}
 	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
 	return ret
 }
 
@@ -2850,6 +2891,13 @@ func (ec *executionContext) marshalNCookies2ᚕᚖgithubᚗcomᚋteeooᚋbaipiao
 
 	}
 	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
 	return ret
 }
 
@@ -2951,6 +2999,13 @@ func (ec *executionContext) marshalN__Directive2ᚕgithubᚗcomᚋ99designsᚋgq
 
 	}
 	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
 	return ret
 }
 
@@ -3024,6 +3079,13 @@ func (ec *executionContext) marshalN__DirectiveLocation2ᚕstringᚄ(ctx context
 
 	}
 	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
 	return ret
 }
 
@@ -3073,6 +3135,13 @@ func (ec *executionContext) marshalN__InputValue2ᚕgithubᚗcomᚋ99designsᚋg
 
 	}
 	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
 	return ret
 }
 
@@ -3114,6 +3183,13 @@ func (ec *executionContext) marshalN__Type2ᚕgithubᚗcomᚋ99designsᚋgqlgen�
 
 	}
 	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
 	return ret
 }
 
@@ -3242,6 +3318,13 @@ func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgq
 
 	}
 	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
 	return ret
 }
 
@@ -3282,6 +3365,13 @@ func (ec *executionContext) marshalO__Field2ᚕgithubᚗcomᚋ99designsᚋgqlgen
 
 	}
 	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
 	return ret
 }
 
@@ -3322,6 +3412,13 @@ func (ec *executionContext) marshalO__InputValue2ᚕgithubᚗcomᚋ99designsᚋg
 
 	}
 	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
 	return ret
 }
 
@@ -3369,6 +3466,13 @@ func (ec *executionContext) marshalO__Type2ᚕgithubᚗcomᚋ99designsᚋgqlgen�
 
 	}
 	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
 	return ret
 }
 
