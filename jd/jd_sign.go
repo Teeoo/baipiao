@@ -2,12 +2,15 @@ package jd
 
 import (
 	"context"
+	j "encoding/json"
+	"fmt"
 	"github.com/go-resty/resty/v2"
 	. "github.com/teeoo/baipiao/cache"
 	"github.com/teeoo/baipiao/typefac"
 	json "github.com/tidwall/gjson"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type Sign struct{}
@@ -17,58 +20,11 @@ var (
 	client *resty.Client
 )
 
-type SignResult struct {
-	Code string `json:"code"`
-	Data struct {
-		SignedRan    string `json:"signedRan"`
-		Status       string `json:"status"`
-		BeanUserType int    `json:"beanUserType"`
-		AwardType    string `json:"awardType"`
-		DailyAward   struct {
-			Type      string `json:"type"`
-			Title     string `json:"title"`
-			SubTitle  string `json:"subTitle"`
-			BeanAward struct {
-				BeanCount  string `json:"beanCount"`
-				BeanImgURL string `json:"beanImgUrl"`
-			} `json:"beanAward"`
-		} `json:"dailyAward"`
-		ContinuityAward struct {
-			Type      string `json:"type"`
-			Title     string `json:"title"`
-			SubTitle  string `json:"subTitle"`
-			BeanAward struct {
-				BeanCount  string `json:"beanCount"`
-				BeanImgURL string `json:"beanImgUrl"`
-			} `json:"beanAward"`
-		} `json:"continuityAward"`
-		ConductionBtn struct {
-			BtnText string `json:"btnText"`
-			LinkURL string `json:"linkUrl"`
-		} `json:"conductionBtn"`
-		SignRemind struct {
-			Title        string `json:"title"`
-			Content      string `json:"content"`
-			PopImgURL    string `json:"popImgUrl"`
-			BeanHomeLink string `json:"beanHomeLink"`
-		} `json:"signRemind"`
-		SignCalendar struct {
-			CurrentDate    string `json:"currentDate"`
-			SignRecordList []struct {
-				Day         string `json:"day"`
-				AwardState  string `json:"awardState"`
-				AwardType   string `json:"awardType,omitempty"`
-				AwardImgURL string `json:"awardImgUrl,omitempty"`
-				AwardDesc   string `json:"awardDesc,omitempty"`
-				PopText     string `json:"popText,omitempty"`
-			} `json:"signRecordList"`
-		} `json:"signCalendar"`
-		Recommend struct {
-		} `json:"recommend"`
-		MsgGuideSwitch    string `json:"msgGuideSwitch"`
-		SourceTips        string `json:"sourceTips"`
-		TomorrowSendBeans int    `json:"tomorrowSendBeans"`
-	} `json:"data"`
+type SignInfo struct {
+	EnActK       string `json:"enActK"`
+	IsFloatLayer bool   `json:"isFloatLayer"`
+	RuleSrv      string `json:"ruleSrv"`
+	SignID       string `json:"signId"`
 }
 
 func init() {
@@ -76,6 +32,7 @@ func init() {
 	log.Println("京东签到合集")
 }
 
+// Run @Cron 0 3,19 * * *
 func (c Sign) Run() {
 	var data = Redis.Keys(ctx, "baipiao:ck:*")
 	for _, s := range data.Val() {
@@ -106,22 +63,28 @@ func (c Sign) Run() {
 
 // 签到领京豆
 func beanSign(c *resty.Request, user string) {
-	result := new(SignResult)
-	url := "https://api.m.jd.com/client.action?functionId=signBeanIndex&appid=ld"
-	resp, err := c.SetResult(&result).Post(url)
-	log.Println(string(resp.Body()), err)
+	resp, _ := c.Post("https://api.m.jd.com/client.action?functionId=signBeanIndex&appid=ld")
+	status := json.Get(string(resp.Body()), "data.status").String()
+	if status == "1" {
+		log.Println(user, "签到京豆签到成功!")
+	} else if status == "2" {
+		log.Println(user, "签到京豆今日已签到")
+	} else {
+		log.Println(user, "签到京豆签到失败")
+	}
 }
 
+// 京东商城签到
 func jdShop(c *resty.Request, name, data, user string) {
-	url := "https://api.m.jd.com/?client=wh5&functionId=qryH5BabelFloors"
 	resp, _ := c.SetHeader("Content-type", "application/x-www-form-urlencoded").SetFormData(map[string]string{
 		"body": data,
-	}).Post(url)
+	}).Post("https://api.m.jd.com/?client=wh5&functionId=qryH5BabelFloors")
 	body := string(resp.Body())
 	floatLayerText := json.Get(body, "floatLayerList.#.params").Array()
 	for _, result := range floatLayerText {
 		if json.Get(result.String(), "enActK").String() != "" {
-			//params:=
+			params, _ := j.Marshal(result.String())
+			jdShopSign(c, name, string(params), user)
 		}
 	}
 	floorList := json.Get(body, "floorList").Array()
@@ -131,14 +94,29 @@ func jdShop(c *resty.Request, name, data, user string) {
 			if signInfo.Map()["signStat"].String() == "1" {
 				log.Printf("%s,%s今日已签到!", name, user)
 			} else {
-				log.Println(signInfo.Map()["params"])
+				//params := new(SignInfo)
+				params, _ := j.Marshal(signInfo.Map()["params"].String())
+				jdShopSign(c, name, string(params), user)
 			}
 		}
 	}
 }
 
-func jdShopSign(c *resty.Request, user string, name, tid string) {
-
+func jdShopSign(c *resty.Request, name, body, user string) {
+	resp, err := c.SetHeader("Content-type", "application/x-www-form-urlencoded").SetFormData(map[string]string{
+		"body":   fmt.Sprintf(`{"params":%s}`, body),
+		"client": "wh5",
+	}).Post("https://api.m.jd.com/client.action?functionId=userSign")
+	if err != nil {
+		log.Println(name, user, "签到异常", err)
+	}
+	if strings.Contains(string(resp.Body()), "签到成功") {
+		log.Println(name, user, "签到成功")
+	} else if strings.Contains(string(resp.Body()), "已签到") {
+		log.Println(name, user, "今日已签到")
+	} else {
+		log.Println(name, user, "签到失败")
+	}
 }
 
 func jdShopWomen(c *resty.Request, user string) {
