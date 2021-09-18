@@ -123,7 +123,8 @@ func init() {
 		//buyFood(HttpClient.R(), result.Val()["pt_pin"])
 		//feed(HttpClient.R(), result.Val()["pt_pin"])
 		//mowing(HttpClient.R(), result.Val()["pt_pin"], 20)
-		tasks(HttpClient.R(), result.Val()["pt_pin"], 2)
+		//tasks(HttpClient.R(), result.Val()["pt_pin"], 2)
+		sweepChickenLegs(HttpClient.R(), result.Val()["pt_pin"], 8)
 	}
 }
 
@@ -148,6 +149,7 @@ func (c Pasture) Run() {
 		buyFood(HttpClient.R(), result.Val()["pt_pin"])
 		feed(HttpClient.R(), result.Val()["pt_pin"])
 		mowing(HttpClient.R(), result.Val()["pt_pin"], 20)
+		sweepChickenLegs(HttpClient.R(), result.Val()["pt_pin"], 8)
 		tasks(HttpClient.R(), result.Val()["pt_pin"], 10)
 	}
 }
@@ -224,7 +226,7 @@ func feed(c *resty.Request, user string) {
 	}
 food:
 	for foodNum >= 10 {
-		ticker := time.NewTimer(1 * time.Second)
+		ticker := time.NewTimer(2 * time.Second)
 		select {
 		case <-ticker.C:
 			data := request(c, "jxmc/operservice/Feed", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp"}`), user)
@@ -250,6 +252,7 @@ food:
 
 // 割草
 func mowing(c *resty.Request, user string, max int) {
+mo:
 	for i := 1; i <= max; i++ {
 		ticker := time.NewTimer(1 * time.Second)
 		select {
@@ -257,7 +260,7 @@ func mowing(c *resty.Request, user string, max int) {
 			data := request(c, "jxmc/operservice/Action", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp,type","type":"2"}`), user)
 			if json.Get(data, "ret").Int() != 0 {
 				log.Printf("%s 第 %s 次割草失败 %s", user, strconv.Itoa(i), data)
-				break
+				break mo
 			}
 			log.Printf("%s 第 %s 次割草成功,获得金币 %s", user, strconv.Itoa(i), json.Get(data, "data.addcoins").String())
 			if json.Get(data, "data.surprise").Bool() {
@@ -291,6 +294,7 @@ func sign(c *resty.Request, user string) {
 	}
 }
 
+// 任务
 func tasks(c *resty.Request, user string, max int) {
 	for i := 1; i <= max; i++ {
 		//var flag = false
@@ -306,7 +310,7 @@ func tasks(c *resty.Request, user string, max int) {
 			case <-ticker.C:
 				taskType, taskName := r.Map()["taskType"].Int(), r.Map()["taskName"].String()
 				if r.Map()["awardStatus"].Int() == 1 {
-					log.Printf("%s 奖励已领取 %s",user,taskName)
+					log.Printf("%s 奖励已领取 %s", user, taskName)
 				}
 				if r.Map()["completedTimes"].Int() >= r.Map()["targetTimes"].Int() {
 					data := request(c, "/newtasksys/newtasksys_front/Award", fmt.Sprintf(`{"_stk": "bizCode,source,taskId","source":"jxmc","bizCode":"jxmc","gty":"ajax","taskId":"%s"}`, r.Map()["taskId"].String()), user)
@@ -324,5 +328,29 @@ func tasks(c *resty.Request, user string, max int) {
 			}
 			ticker.Stop()
 		}
+	}
+}
+
+// 扫鸡腿
+func sweepChickenLegs(c *resty.Request, user string, max int) {
+chicken:
+	for i := 1; i <= max; i++ {
+		ticker := time.NewTimer(2 * time.Second)
+		select {
+		case <-ticker.C:
+			data := request(c, "jxmc/operservice/Action", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,petid,sceneid,type","type":"1","petid":"%s"}`, petInfoList[0].Petid), user)
+			if json.Get(data, "ret").Int() != 0 {
+				log.Printf("%s 第 %s 次扫鸡腿失败 %s", user, strconv.Itoa(i), data)
+				break chicken
+			}
+			log.Printf("%s 第 %s 次扫鸡腿成功, 获得金币: %s", user, strconv.Itoa(i), json.Get(data, "data.addcoins").String())
+			if json.Get(data, "data.surprise").Bool() {
+				result := request(c, "jxmc/operservice/GetSelfResult", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,sceneid,type","type":"14"}`), user)
+				if json.Get(result, "ret").Int() == 0 {
+					log.Printf("%s 获得割草奖励 %s", user, json.Get(result, "data.prizepool").String())
+				}
+			}
+		}
+		ticker.Stop()
 	}
 }
