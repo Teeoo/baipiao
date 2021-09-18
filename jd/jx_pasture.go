@@ -104,6 +104,27 @@ type Petinfo struct {
 func init() {
 	typefac.RegisterType(Pasture{})
 	log.Println("京喜APP->京喜牧场->定时收金币/割草/投喂小鸡")
+	var data = Redis.Keys(ctx, "baipiao:ck:*")
+	for _, s := range data.Val() {
+		result := Redis.HGetAll(ctx, s)
+		HttpClient.SetDebug(false).SetCookies([]*http.Cookie{
+			{
+				Name:  "pt_pin",
+				Value: result.Val()["pt_pin"],
+			}, {
+				Name:  "pt_key",
+				Value: result.Val()["pt_key"],
+			},
+		})
+		homeData(HttpClient.R(), result.Val()["pt_pin"])
+		//goldFromBull(HttpClient.R(), result.Val()["pt_pin"])
+		//sign(HttpClient.R(), result.Val()["pt_pin"])
+		//dailyFood(HttpClient.R(), result.Val()["pt_pin"])
+		//buyFood(HttpClient.R(), result.Val()["pt_pin"])
+		//feed(HttpClient.R(), result.Val()["pt_pin"])
+		//mowing(HttpClient.R(), result.Val()["pt_pin"], 20)
+		tasks(HttpClient.R(), result.Val()["pt_pin"], 2)
+	}
 }
 
 // Run @Cron 40 */1 * * *
@@ -174,16 +195,24 @@ func dailyFood(c *resty.Request, user string) {
 
 // 买白菜
 func buyFood(c *resty.Request, user string) {
-	log.Println("开始执行买白菜")
+	log.Printf("%s 当前白菜 %s 棵 当前金币 %s", user, strconv.Itoa(foodNum), strconv.Itoa(coins))
+food:
 	for foodNum <= 1000 && coins >= 5000 {
-		data := request(c, "jxmc/operservice/Buy", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp,type","type":"1"}`), user)
-		if json.Get(data, "ret").Int() == 200 {
-			coins -= 5000
-			foodNum += 100
-			log.Printf("%s 成功购买白菜:%s", user, data)
-		} else {
-			log.Printf("%s 购买白菜失败:%s", user, json.Get(data, "message").String())
+		ticker := time.NewTimer(1 * time.Second)
+		select {
+		case <-ticker.C:
+			data := request(c, "jxmc/operservice/Buy", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp,type","type":"1"}`), user)
+			if json.Get(data, "ret").Int() == 200 {
+				coins -= 5000
+				foodNum += 100
+				log.Printf("%s 成功购买白菜:%s", user, data)
+			} else {
+				log.Printf("%s 购买白菜失败:%s", user, json.Get(data, "message").String())
+				ticker.Stop()
+				break food
+			}
 		}
+		ticker.Stop()
 	}
 }
 
@@ -193,57 +222,52 @@ func feed(c *resty.Request, user string) {
 		log.Printf("%s当前白菜不足10棵,无法喂小鸡", user)
 		return
 	}
+food:
 	for foodNum >= 10 {
-		var ch chan int
-		ticker := time.NewTicker(time.Second * 2)
-		go func() {
-			for range ticker.C {
-				data := request(c, "jxmc/operservice/Feed", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp"}`), user)
-				if json.Get(data, "ret").Int() == 0 {
-					log.Printf("%s 成功投喂一次小鸡:%s", user, data)
-					foodNum = int(json.Get(data, "data.newnum").Int())
-				} else if json.Get(data, "ret").Int() == 2020 && json.Get(data, "data.maintaskId").String() == "pause" {
-					result := request(c, "jxmc/operservice/GetSelfResult", fmt.Sprintf(`{"_stk": "channel,itemid,sceneid,type","petid":"%s","type":"11"}`, petInfoList[0].Petid), user)
-					if json.Get(result, "ret").Int() == 0 {
-						log.Printf("%s 成功收取一枚金蛋, 当前金蛋:%s", user, json.Get(result, "data.newnum"))
-					}
-				} else {
-					log.Printf("%s 投喂失败:%s", user, data)
-					if json.Get(data, "ret").Int() == 2005 {
-						break
-					}
+		ticker := time.NewTimer(1 * time.Second)
+		select {
+		case <-ticker.C:
+			data := request(c, "jxmc/operservice/Feed", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp"}`), user)
+			if json.Get(data, "ret").Int() == 0 {
+				log.Printf("%s 成功投喂一次小鸡:%s", user, data)
+				foodNum = int(json.Get(data, "data.newnum").Int())
+			} else if json.Get(data, "ret").Int() == 2020 && json.Get(data, "data.maintaskId").String() == "pause" {
+				result := request(c, "jxmc/operservice/GetSelfResult", fmt.Sprintf(`{"_stk": "channel,itemid,sceneid,type","petid":"%s","type":"11"}`, petInfoList[0].Petid), user)
+				if json.Get(result, "ret").Int() == 0 {
+					log.Printf("%s 成功收取一枚金蛋, 当前金蛋:%s", user, json.Get(result, "data.newnum"))
+				}
+			} else {
+				log.Printf("%s 投喂失败:%s", user, data)
+				if json.Get(data, "ret").Int() == 2005 || json.Get(data, "ret").Int() == 2004 {
+					log.Println("小鸡吃太饱了,或者任务未解锁")
+					ticker.Stop()
+					break food
 				}
 			}
-			ch <- 1
-		}()
-		<-ch
-		time.Sleep(5 * time.Second)
+		}
 	}
 }
 
 // 割草
 func mowing(c *resty.Request, user string, max int) {
 	for i := 1; i <= max; i++ {
-		data := request(c, "jxmc/operservice/Action", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp,type","type":"2"}`), user)
-		if json.Get(data, "ret").Int() != 0 {
-			log.Printf("%s 第 %s 次割草失败 %s", user, strconv.Itoa(i), data)
-			break
-		}
-		log.Printf("%s 第 %s 次割草成功,获得金币 %s", user, strconv.Itoa(i), json.Get(data, "data.addcoins").String())
-		if json.Get(data, "data.surprise").Bool() {
-			var ch chan int
-			ticker := time.NewTicker(time.Second * 2)
-			go func() {
-				for range ticker.C {
-					result := request(c, "jxmc/operservice/GetSelfResult", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,sceneid,type","type":"14"}`), user)
-					if json.Get(result, "ret").Int() == 0 {
-						log.Printf("%s 获得割草奖励 %s", user, json.Get(result, "data.prizepool").String())
-					}
+		ticker := time.NewTimer(1 * time.Second)
+		select {
+		case <-ticker.C:
+			data := request(c, "jxmc/operservice/Action", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp,type","type":"2"}`), user)
+			if json.Get(data, "ret").Int() != 0 {
+				log.Printf("%s 第 %s 次割草失败 %s", user, strconv.Itoa(i), data)
+				break
+			}
+			log.Printf("%s 第 %s 次割草成功,获得金币 %s", user, strconv.Itoa(i), json.Get(data, "data.addcoins").String())
+			if json.Get(data, "data.surprise").Bool() {
+				result := request(c, "jxmc/operservice/GetSelfResult", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,sceneid,type","type":"14"}`), user)
+				if json.Get(result, "ret").Int() == 0 {
+					log.Printf("%s 获得割草奖励 %s", user, json.Get(result, "data.prizepool").String())
 				}
-				ch <- 1
-			}()
-			<-ch
+			}
 		}
+		ticker.Stop()
 	}
 }
 
@@ -269,7 +293,7 @@ func sign(c *resty.Request, user string) {
 
 func tasks(c *resty.Request, user string, max int) {
 	for i := 1; i <= max; i++ {
-		var flag = false
+		//var flag = false
 		result := request(c, "/newtasksys/newtasksys_front/GetUserTaskStatusList", fmt.Sprintf(`{"_stk": "bizCode,dateType,jxpp_wxapp_type,showAreaTaskFlag,source","source":"jxmc","bizCode":"jxmc","dateType":"","showAreaTaskFlag":"0","jxpp_wxapp_type":"7","gty":"ajax"}`), user)
 		if json.Get(result, "ret").Int() != 0 {
 			log.Printf("%s 获取每日任务列表失败 %s", user, result)
@@ -277,30 +301,28 @@ func tasks(c *resty.Request, user string, max int) {
 		item := json.Get(result, "data.userTaskStatusList").Array()
 		log.Println(item)
 		for _, r := range item {
-			task_type, task_name := r.Map()["taskType"].Int(), r.Map()["taskName"].String()
-			if r.Map()["awardStatus"].Int() == 1 {
-				log.Println("奖励已领取")
-				continue
-			}
-			flag = false
-			if r.Map()["completedTimes"].Int() >= r.Map()["targetTimes"].Int() {
-				data := request(c, "/newtasksys/newtasksys_front/Award", fmt.Sprintf(`{"_stk": "bizCode,source,taskId","source":"jxmc","bizCode":"jxmc","gty":"ajax","taskId":"%s"}`, r.Map()["taskId"].String()), user)
-				if json.Get(data, "ret").Int() == 0 {
-					log.Printf("%s 成功领取任务《%s》奖励!", user, task_name)
+			ticker := time.NewTimer(1 * time.Second)
+			select {
+			case <-ticker.C:
+				taskType, taskName := r.Map()["taskType"].Int(), r.Map()["taskName"].String()
+				if r.Map()["awardStatus"].Int() == 1 {
+					log.Printf("%s 奖励已领取 %s",user,taskName)
 				}
-				time.Sleep(2 * time.Second)
-			}
-			if task_type == 2 {
-				data := request(c, "/newtasksys/newtasksys_front/DoTask", fmt.Sprintf(`{"_stk": "bizCode,configExtra,source,taskId","source":"jxmc","bizCode":"jxmc","gty":"ajax","taskId":"%s","configExtra":""}`, r.Map()["taskId"].String()), user)
-				if json.Get(data, "ret").Int() == 0 {
-					log.Printf("%s 成功完成任务《%s》!", user, task_name)
-					flag = true
+				if r.Map()["completedTimes"].Int() >= r.Map()["targetTimes"].Int() {
+					data := request(c, "/newtasksys/newtasksys_front/Award", fmt.Sprintf(`{"_stk": "bizCode,source,taskId","source":"jxmc","bizCode":"jxmc","gty":"ajax","taskId":"%s"}`, r.Map()["taskId"].String()), user)
+					if json.Get(data, "ret").Int() == 0 {
+						log.Printf("%s 成功领取任务《%s》奖励!", user, taskName)
+					}
+					time.Sleep(2 * time.Second)
+				}
+				if taskType == 2 {
+					data := request(c, "/newtasksys/newtasksys_front/DoTask", fmt.Sprintf(`{"_stk": "bizCode,configExtra,source,taskId","source":"jxmc","bizCode":"jxmc","gty":"ajax","taskId":"%s","configExtra":""}`, r.Map()["taskId"].String()), user)
+					if json.Get(data, "ret").Int() == 0 {
+						log.Printf("%s 成功完成任务《%s》!", user, taskName)
+					}
 				}
 			}
-			time.Sleep(2 * time.Second)
-		}
-		if flag {
-			break
+			ticker.Stop()
 		}
 	}
 }

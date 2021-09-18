@@ -86,14 +86,16 @@ func request(c *resty.Request, path, body, user string) string {
 	purl := fmt.Sprintf("https://m.jingxi.com/%s?%s", path, params.Encode())
 	h5st := encrypt(purl, "")
 	purl = fmt.Sprintf("%s&h5st=%s", purl, h5st)
-	log.Println(purl)
-	timeResult, _ := rand.Int(rand.Reader, big.NewInt(3))
-	time.Sleep(time.Duration(timeResult.Int64()) * time.Second)
-	resp, err := c.SetHeaders(map[string]string{"referer": "https://st.jingxi.com/"}).Post(purl)
-	if err != nil {
-		log.Println(err)
+	timer := time.NewTimer(1 * time.Second)
+	select {
+	case <-timer.C:
+		resp, err := c.SetHeaders(map[string]string{"referer": "https://st.jingxi.com/"}).Post(purl)
+		if err != nil {
+			log.Println(err)
+		}
+		timer.Stop()
+		return string(resp.Body())
 	}
-	return string(resp.Body())
 }
 
 func tom5(str string) string {
