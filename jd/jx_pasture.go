@@ -101,31 +101,11 @@ type Petinfo struct {
 	Type               int         `json:"type"`
 }
 
+var ShareCode []map[string]string
+
 func init() {
 	typefac.RegisterType(Pasture{})
 	log.Println("京喜APP->京喜牧场->定时收金币/割草/投喂小鸡")
-	var data = Redis.Keys(ctx, "baipiao:ck:*")
-	for _, s := range data.Val() {
-		result := Redis.HGetAll(ctx, s)
-		HttpClient.SetDebug(false).SetCookies([]*http.Cookie{
-			{
-				Name:  "pt_pin",
-				Value: result.Val()["pt_pin"],
-			}, {
-				Name:  "pt_key",
-				Value: result.Val()["pt_key"],
-			},
-		})
-		homeData(HttpClient.R(), result.Val()["pt_pin"])
-		//goldFromBull(HttpClient.R(), result.Val()["pt_pin"])
-		//sign(HttpClient.R(), result.Val()["pt_pin"])
-		//dailyFood(HttpClient.R(), result.Val()["pt_pin"])
-		//buyFood(HttpClient.R(), result.Val()["pt_pin"])
-		//feed(HttpClient.R(), result.Val()["pt_pin"])
-		//mowing(HttpClient.R(), result.Val()["pt_pin"], 20)
-		//tasks(HttpClient.R(), result.Val()["pt_pin"], 2)
-		sweepChickenLegs(HttpClient.R(), result.Val()["pt_pin"], 8)
-	}
 }
 
 // Run @Cron 40 */1 * * *
@@ -152,6 +132,7 @@ func (c Pasture) Run() {
 		sweepChickenLegs(HttpClient.R(), result.Val()["pt_pin"], 8)
 		tasks(HttpClient.R(), result.Val()["pt_pin"], 10)
 	}
+	help(HttpClient.R())
 }
 
 func homeData(c *resty.Request, user string) {
@@ -172,6 +153,7 @@ func homeData(c *resty.Request, user string) {
 	if len(homePageInfo.Data.Materialinfo) != 0 {
 		foodNum = homePageInfo.Data.Materialinfo[0].Value
 	}
+	ShareCode = append(ShareCode, map[string]string{"user": user, "code": homePageInfo.Data.Sharekey})
 	log.Printf("%s 的互助码为:%s", user, homePageInfo.Data.Sharekey)
 }
 
@@ -352,5 +334,34 @@ chicken:
 			}
 		}
 		ticker.Stop()
+	}
+}
+
+// 助力
+func help(c *resty.Request) {
+	var data = Redis.Keys(ctx, "baipiao:ck:*")
+	for _, s := range data.Val() {
+		result := Redis.HGetAll(ctx, s)
+		c.SetCookies([]*http.Cookie{
+			{
+				Name:  "pt_pin",
+				Value: result.Val()["pt_pin"],
+			}, {
+				Name:  "pt_key",
+				Value: result.Val()["pt_key"],
+			},
+		})
+		for i := 0; i < len(ShareCode); i++ {
+			ticker := time.NewTimer(2 * time.Second)
+			select {
+			case <-ticker.C:
+				if result.Val()["pt_pin"] != ShareCode[i]["user"] {
+					log.Printf(`账号%s去助力%s`, result.Val()["pt_pin"], ShareCode[i]["code"])
+					resp := request(c, "/jxmc/operservice/EnrollFriend", fmt.Sprintf(`{"_stk": "channel,sceneid,sharekey","sharekey":"%s"}`, ShareCode[i]["code"]), result.Val()["pt_pin"])
+					log.Println(resp)
+				}
+			}
+			ticker.Stop()
+		}
 	}
 }
