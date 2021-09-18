@@ -37,10 +37,10 @@ var (
 	f                  string
 	algo               string
 	coins              int       // 金币数量
-	food_num           = 0       // 白菜数量
-	active_id          = ""      // 活动ID
-	pet_info_list      []Petinfo // 小鸡相关信息列表
-	cow_info           Cow       // 牛相关信息
+	foodNum            = 0       // 白菜数量
+	activeId           = ""      // 活动ID
+	petInfoList        []Petinfo // 小鸡相关信息列表
+	cowInfo            Cow       // 牛相关信息
 	share_code         string    // 助力码
 	phone_id           string    // 设备ID
 	egg_num            = 0       // 金蛋数量
@@ -61,7 +61,7 @@ func request(c *resty.Request, path, body, user string) string {
 	params := url.Values{}
 	params.Add("channel", "7")
 	params.Add("sceneid", "1001")
-	params.Add("activeid", active_id)
+	params.Add("activeid", activeId)
 	params.Add("activekey", "null")
 	params.Add("_ste", "1")
 	params.Add("_", strconv.FormatInt(time.Now().Unix()*1000+2, 10))

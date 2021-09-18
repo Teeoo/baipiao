@@ -139,22 +139,22 @@ func homeData(c *resty.Request, user string) {
 		log.Println("首页数据获取出错", err)
 	}
 	coins = homePageInfo.Data.Coins
-	active_id = homePageInfo.Data.Activeid
-	pet_info_list = homePageInfo.Data.Petinfo
+	activeId = homePageInfo.Data.Activeid
+	petInfoList = homePageInfo.Data.Petinfo
 	share_code = homePageInfo.Data.Sharekey
-	cow_info = homePageInfo.Data.Cow
+	cowInfo = homePageInfo.Data.Cow
 	egg_num = homePageInfo.Data.Eggcnt
 	curTaskStep = homePageInfo.Data.FinishedtaskId
-	food_num = 0
+	foodNum = 0
 	if len(homePageInfo.Data.Materialinfo) != 0 {
-		food_num = homePageInfo.Data.Materialinfo[0].Value
+		foodNum = homePageInfo.Data.Materialinfo[0].Value
 	}
 	log.Printf("%s 的互助码为:%s", user, homePageInfo.Data.Sharekey)
 }
 
 // 收牛的金币
 func goldFromBull(c *resty.Request, user string) {
-	data := request(c, "jxmc/operservice/GetCoin", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp,token","token": "%s"}`, getToken(strconv.Itoa(cow_info.Lastgettime))), user)
+	data := request(c, "jxmc/operservice/GetCoin", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp,token","token": "%s"}`, getToken(strconv.Itoa(cowInfo.Lastgettime))), user)
 	if json.Get(data, "ret").Int() == 0 {
 		log.Printf("%s 成功收牛牛, 获得金币:%s", user, json.Get(data, "data.addcoin").String())
 	} else {
@@ -175,11 +175,11 @@ func dailyFood(c *resty.Request, user string) {
 // 买白菜
 func buyFood(c *resty.Request, user string) {
 	log.Println("开始执行买白菜")
-	for food_num <= 1000 && coins >= 5000 {
+	for foodNum <= 1000 && coins >= 5000 {
 		data := request(c, "jxmc/operservice/Buy", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp,type","type":"1"}`), user)
 		if json.Get(data, "ret").Int() == 200 {
 			coins -= 5000
-			food_num += 100
+			foodNum += 100
 			log.Printf("%s 成功购买白菜:%s", user, data)
 		} else {
 			log.Printf("%s 购买白菜失败:%s", user, json.Get(data, "message").String())
@@ -189,11 +189,11 @@ func buyFood(c *resty.Request, user string) {
 
 // 投喂小🐔
 func feed(c *resty.Request, user string) {
-	if food_num < 10 {
+	if foodNum < 10 {
 		log.Printf("%s当前白菜不足10棵,无法喂小鸡", user)
 		return
 	}
-	for food_num >= 10 {
+	for foodNum >= 10 {
 		var ch chan int
 		ticker := time.NewTicker(time.Second * 2)
 		go func() {
@@ -201,9 +201,9 @@ func feed(c *resty.Request, user string) {
 				data := request(c, "jxmc/operservice/Feed", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp"}`), user)
 				if json.Get(data, "ret").Int() == 0 {
 					log.Printf("%s 成功投喂一次小鸡:%s", user, data)
-					food_num = int(json.Get(data, "data.newnum").Int())
+					foodNum = int(json.Get(data, "data.newnum").Int())
 				} else if json.Get(data, "ret").Int() == 2020 && json.Get(data, "data.maintaskId").String() == "pause" {
-					result := request(c, "jxmc/operservice/GetSelfResult", fmt.Sprintf(`{"_stk": "channel,itemid,sceneid,type","petid":"%s","type":"11"}`, pet_info_list[0].Petid), user)
+					result := request(c, "jxmc/operservice/GetSelfResult", fmt.Sprintf(`{"_stk": "channel,itemid,sceneid,type","petid":"%s","type":"11"}`, petInfoList[0].Petid), user)
 					if json.Get(result, "ret").Int() == 0 {
 						log.Printf("%s 成功收取一枚金蛋, 当前金蛋:%s", user, json.Get(result, "data.newnum"))
 					}

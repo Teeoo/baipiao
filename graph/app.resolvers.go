@@ -8,16 +8,18 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-resty/resty/v2"
+	"github.com/robfig/cron/v3"
 	json "github.com/tidwall/gjson"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/robfig/cron/v3"
 	. "github.com/teeoo/baipiao/cache"
 	Config "github.com/teeoo/baipiao/config"
+	. "github.com/teeoo/baipiao/cron"
 	"github.com/teeoo/baipiao/graph/generated"
 	"github.com/teeoo/baipiao/graph/model"
 	"github.com/teeoo/baipiao/typefac"
@@ -31,11 +33,7 @@ type ResultRefreshToken struct {
 }
 
 func (r *mutationResolver) AddJdCookies(ctx context.Context, cookie model.InputCookie) (*model.Cookies, error) {
-	Redis.HSet(ctx, fmt.Sprintf("baipiao:ck:%s", cookie.PtPin), "pt_pin", cookie.PtPin)
-	Redis.HSet(ctx, fmt.Sprintf("baipiao:ck:%s", cookie.PtPin), "pt_key", cookie.PtKey)
-	Redis.HSet(ctx, fmt.Sprintf("baipiao:ck:%s", cookie.PtPin), "ws_key", *cookie.WsKey)
-	Redis.HSet(ctx, fmt.Sprintf("baipiao:ck:%s", cookie.PtPin), "qq", *cookie.Qq)
-	Redis.HSet(ctx, fmt.Sprintf("baipiao:ck:%s", cookie.PtPin), "remark", *cookie.Remark)
+	Redis.HMSet(ctx, fmt.Sprintf("baipiao:ck:%s", cookie.PtPin), "pt_pin", cookie.PtPin, "pt_key", cookie.PtKey, "ws_key", *cookie.WsKey, "qq", *cookie.Qq, "remark", *cookie.Remark)
 	var data = model.Cookies{
 		PtKey:  cookie.PtKey,
 		PtPin:  cookie.PtPin,
@@ -47,16 +45,21 @@ func (r *mutationResolver) AddJdCookies(ctx context.Context, cookie model.InputC
 
 func (r *mutationResolver) CronAddJob(ctx context.Context, spec *string, cmd *string) (*int, error) {
 	school := typefac.CreateInstance(fmt.Sprintf("jd.%s", *cmd), nil).(School)
-	job, err := c.AddJob(*spec, school)
+	val, e := Redis.HGet(ctx, fmt.Sprintf("baipiao:cron:jd.%s", *cmd), "id").Int()
+	if e == nil {
+		Task.Remove(cron.EntryID(val))
+	}
+	job, err := Task.AddJob(*spec, school)
 	if err != nil {
 		return nil, err
 	}
-	c.Start()
+	Redis.HMSet(ctx, fmt.Sprintf("baipiao:cron:jd.%s", *cmd), "id", strconv.Itoa(int(job)), "spec", *spec, "jobName", fmt.Sprintf("jd.%s", *cmd))
+	Task.Start()
 	return func(val int) *int { return &val }(int(job)), nil
 }
 
 func (r *mutationResolver) CronDelJob(ctx context.Context, jobID *int) (*int, error) {
-	c.Remove(cron.EntryID(*jobID))
+	Task.Remove(cron.EntryID(*jobID))
 	return nil, nil
 }
 
@@ -102,7 +105,7 @@ func (r *queryResolver) CheckCookies(ctx context.Context) ([]*model.CheckCookies
 			Post(apiUrl)
 		name, _ := url.QueryUnescape(result.Val()["pt_pin"])
 		client := resty.New()
-		if json.Get(string(resp.Body()),"code").String() != "0" {
+		if json.Get(string(resp.Body()), "code").String() != "0" {
 			message = "无效[已刷新]"
 			// TODO:通过ws_key刷新pt_key
 			response, _ := client.R().SetCookies([]*http.Cookie{
@@ -187,8 +190,6 @@ type subscriptionResolver struct{ *Resolver }
 //  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
 //    it when you're done.
 //  - You have helper methods in this file. Move them out to keep these resolver files clean.
-
-var c = cron.New(cron.WithParser(cron.NewParser(cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)))
 
 type newUserInfo struct {
 	Code           string `json:"code"`
