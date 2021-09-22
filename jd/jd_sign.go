@@ -34,31 +34,46 @@ func init() {
 
 // Run @Cron 0 3,19 * * *
 func (c Sign) Run() {
+	//file := fmt.Sprintf("%s/%s.log", "./logs/jd_sign", time.Now().Format("2006-01-02-15-04-05"))
+	//loggerFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	//defer func(loggerFile *os.File) {
+	//	err := loggerFile.Close()
+	//	if err != nil {
+	//		log.Println(err)
+	//	}
+	//}(loggerFile)
+	//if err != nil {
+	//	log.Println(err)
+	//}
+	//logger = log.New(loggerFile, "[京喜牧场] ", log.Ldate|log.Ltime|log.Llongfile|log.Lshortfile)
+	initLogger("./logs/jd_sign", "京东签到合集")
 	var data = Redis.Keys(ctx, "baipiao:ck:*")
-	for _, s := range data.Val() {
-		result := Redis.HGetAll(ctx, s)
-		client = resty.New().SetDebug(false).SetCookies([]*http.Cookie{
-			{
-				Name:  "pt_pin",
-				Value: result.Val()["pt_pin"],
-			}, {
-				Name:  "pt_key",
-				Value: result.Val()["pt_key"],
-			},
-		}).SetHeader("User-Agent", "jdapp;iPhone;10.1.2;15.0;cc4a3fee7254710140e7ccc0443480e5d6b3ca68;network/wifi;model/iPhone12,1;addressid/2865568211;appBuild/167802;jdSupportDarkMode/0;Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1")
-		beanSign(client.R(), result.Val()["pt_pin"])
-		jdShopWomen(client.R(), result.Val()["pt_pin"])
-		jdShopCard(client.R(), result.Val()["pt_pin"])
-		jdShopBook(client.R(), result.Val()["pt_pin"])
-		jdShopAccompany(client.R(), result.Val()["pt_pin"])
-		jdShopSuitcase(client.R(), result.Val()["pt_pin"])
-		jdShopShoes(client.R(), result.Val()["pt_pin"])
-		jdShopFoodMarket(client.R(), result.Val()["pt_pin"])
-		jdShopClothing(client.R(), result.Val()["pt_pin"])
-		jdShopHealth(client.R(), result.Val()["pt_pin"])
-		jdShopSecondHand(client.R(), result.Val()["pt_pin"])
-		jdShopSchool(client.R(), result.Val()["pt_pin"])
-	}
+	go func() {
+		for _, s := range data.Val() {
+			result := Redis.HGetAll(ctx, s)
+			client = resty.New().SetDebug(false).SetCookies([]*http.Cookie{
+				{
+					Name:  "pt_pin",
+					Value: result.Val()["pt_pin"],
+				}, {
+					Name:  "pt_key",
+					Value: result.Val()["pt_key"],
+				},
+			}).SetHeader("User-Agent", "jdapp;iPhone;10.1.2;15.0;cc4a3fee7254710140e7ccc0443480e5d6b3ca68;network/wifi;model/iPhone12,1;addressid/2865568211;appBuild/167802;jdSupportDarkMode/0;Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1")
+			beanSign(client.R(), result.Val()["pt_pin"])
+			jdShopWomen(client.R(), result.Val()["pt_pin"])
+			jdShopCard(client.R(), result.Val()["pt_pin"])
+			jdShopBook(client.R(), result.Val()["pt_pin"])
+			jdShopAccompany(client.R(), result.Val()["pt_pin"])
+			jdShopSuitcase(client.R(), result.Val()["pt_pin"])
+			jdShopShoes(client.R(), result.Val()["pt_pin"])
+			jdShopFoodMarket(client.R(), result.Val()["pt_pin"])
+			jdShopClothing(client.R(), result.Val()["pt_pin"])
+			jdShopHealth(client.R(), result.Val()["pt_pin"])
+			jdShopSecondHand(client.R(), result.Val()["pt_pin"])
+			jdShopSchool(client.R(), result.Val()["pt_pin"])
+		}
+	}()
 }
 
 // 签到领京豆

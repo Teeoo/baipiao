@@ -110,29 +110,32 @@ func init() {
 
 // Run @Cron 40 */1 * * *
 func (c Pasture) Run() {
+	initLogger("./logs/jx_pasture", "京喜牧场")
 	var data = Redis.Keys(ctx, "baipiao:ck:*")
-	for _, s := range data.Val() {
-		result := Redis.HGetAll(ctx, s)
-		HttpClient.SetDebug(false).SetCookies([]*http.Cookie{
-			{
-				Name:  "pt_pin",
-				Value: result.Val()["pt_pin"],
-			}, {
-				Name:  "pt_key",
-				Value: result.Val()["pt_key"],
-			},
-		})
-		homeData(HttpClient.R(), result.Val()["pt_pin"])
-		goldFromBull(HttpClient.R(), result.Val()["pt_pin"])
-		sign(HttpClient.R(), result.Val()["pt_pin"])
-		dailyFood(HttpClient.R(), result.Val()["pt_pin"])
-		buyFood(HttpClient.R(), result.Val()["pt_pin"])
-		feed(HttpClient.R(), result.Val()["pt_pin"])
-		mowing(HttpClient.R(), result.Val()["pt_pin"], 20)
-		sweepChickenLegs(HttpClient.R(), result.Val()["pt_pin"], 8)
-		tasks(HttpClient.R(), result.Val()["pt_pin"], 10)
-	}
-	help(HttpClient.R())
+	go func() {
+		for _, s := range data.Val() {
+			result := Redis.HGetAll(ctx, s)
+			HttpClient.SetDebug(false).SetCookies([]*http.Cookie{
+				{
+					Name:  "pt_pin",
+					Value: result.Val()["pt_pin"],
+				}, {
+					Name:  "pt_key",
+					Value: result.Val()["pt_key"],
+				},
+			})
+			homeData(HttpClient.R(), result.Val()["pt_pin"])
+			goldFromBull(HttpClient.R(), result.Val()["pt_pin"])
+			sign(HttpClient.R(), result.Val()["pt_pin"])
+			dailyFood(HttpClient.R(), result.Val()["pt_pin"])
+			buyFood(HttpClient.R(), result.Val()["pt_pin"])
+			feed(HttpClient.R(), result.Val()["pt_pin"])
+			mowing(HttpClient.R(), result.Val()["pt_pin"], 20)
+			sweepChickenLegs(HttpClient.R(), result.Val()["pt_pin"], 8)
+			tasks(HttpClient.R(), result.Val()["pt_pin"], 10)
+		}
+		help(HttpClient.R())
+	}()
 }
 
 func homeData(c *resty.Request, user string) {

@@ -1,10 +1,8 @@
 package jd
 
 import (
-	"bytes"
 	"crypto/hmac"
 	m "crypto/md5"
-	"crypto/rand"
 	"crypto/sha256"
 	"crypto/sha512"
 	j "encoding/json"
@@ -14,8 +12,6 @@ import (
 	. "github.com/teeoo/baipiao/http"
 	json "github.com/tidwall/gjson"
 	"log"
-	"math/big"
-	random "math/rand"
 	"net/url"
 	"reflect"
 	"regexp"
@@ -51,6 +47,20 @@ var (
 )
 
 func init() {
+	//PathExists("./logs/jx_init")
+	//file := fmt.Sprintf("%s/%s.log", "./logs/jx_init", time.Now().Format("2006-01-02-15-04-05"))
+	//loggerFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	//defer func(loggerFile *os.File) {
+	//	err := loggerFile.Close()
+	//	if err != nil {
+	//		log.Println(err)
+	//	}
+	//}(loggerFile)
+	//if err != nil {
+	//	log.Println(err)
+	//}
+	//logger = log.New(loggerFile, "[京喜初始化操作] ", log.Ldate|log.Ltime|log.Llongfile|log.Lshortfile)
+	initLogger("./logs/jx_init", "京喜初始化操作")
 	getEncrypt()
 }
 
@@ -70,10 +80,6 @@ func request(c *resty.Request, path, body, user string) string {
 	params.Add("callback", "")
 	params.Add("g_ty", "ls")
 	params.Add("jxmc_jstoken", jsToken)
-	//if body != "" {
-	//	params.Add("_stk", json.Get(body, "_stk").String())
-	//	params.Add("token", json.Get(body, "token").String())
-	//}
 	var mapBody map[string]string
 	_ = j.Unmarshal([]byte(body), &mapBody)
 	for s, i := range mapBody {
@@ -102,32 +108,6 @@ func tom5(str string) string {
 	data := []byte(str)
 	has := m.Sum(data)
 	return fmt.Sprintf("%x", has)
-}
-
-func GetRandomString(num int, str ...string) string {
-	s := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	if len(str) > 0 {
-		s = str[0]
-	}
-	l := len(s)
-	r := random.New(random.NewSource(getRandSeek()))
-	var buf bytes.Buffer
-	for i := 0; i < num; i++ {
-		x := r.Intn(l)
-		buf.WriteString(s[x : x+1])
-	}
-	return buf.String()
-}
-
-func getRandSeek() int64 {
-	l.Lock()
-	if randSeek >= 100000000 {
-		randSeek = 1
-	}
-	randSeek++
-	l.Unlock()
-	return time.Now().UnixNano() + randSeek
-
 }
 
 func encrypt(u, stk string) string {
@@ -218,19 +198,6 @@ func getEncrypt() {
 		log.Printf("获取到签名算法为: %s tk为: %s", algo, token)
 	}
 
-}
-
-func fp() string {
-	e := "0123456789"
-	a := 13
-	i := ""
-	for a > 0 {
-		result, _ := rand.Int(rand.Reader, big.NewInt(int64(len(e))))
-		i += fmt.Sprintf("%s", result)
-		a -= 1
-	}
-	i += fmt.Sprintf("%s", strconv.FormatInt(time.Now().Unix()*100, 10))
-	return i[0:16]
 }
 
 func getToken(args string) string {
