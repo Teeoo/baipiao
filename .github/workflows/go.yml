@@ -35,7 +35,7 @@ jobs:
           username: ${{ secrets.REMOTE_USER }}
           port: ${{ secrets.REMOTE_PORT }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: 'app,config.toml'
+          source: 'app,config.toml,ecosystem.config.js'
           target: ${{ secrets.REMOTE_TARGET }}
 
       - name: SSH Remote Commands
