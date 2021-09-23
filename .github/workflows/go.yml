@@ -11,15 +11,31 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Set up Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.17
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
 
-    - name: Build
-      run: go build -v ./...
+      - name: Build
+        run: CGO_ENABLED=0 go build -o app -tags=jsoniter
 
-    - name: Test
-      run: go test -v ./...
+      - name: SCP Files
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          port: ${{ secrets.REMOTE_PORT }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: 'app'
+          target: ${{ secrets.REMOTE_TARGET }}
+
+      - name: SSH Remote Commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          port: ${{ secrets.REMOTE_PORT }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: ${{ secrets.AFTER_COMMAND }}
