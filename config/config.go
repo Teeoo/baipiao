@@ -15,9 +15,14 @@ type jwt struct {
 	JWT_SECRET string
 }
 
+type web struct {
+	Port int
+}
+
 type ViperConfig struct {
 	Redis redis `mapstructure:"redis"`
-	Jwt   jwt `mapstructure:"jwt"`
+	Jwt   jwt   `mapstructure:"jwt"`
+	Web   web   `mapstructure:"web"`
 }
 
 var Config ViperConfig

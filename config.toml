@@ -5,3 +5,5 @@ Port = 6379
 Db = 1
 [Jwt]
 JWT_SECRET = 'o0oo00oo00oo0oo0'
+[Web]
+Port = 4321
