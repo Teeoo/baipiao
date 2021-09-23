@@ -17,7 +17,8 @@ import (
 type Box5G struct{}
 
 var (
-	boxLogger *log.Logger
+	boxLogger    *log.Logger
+	boxShareCode []map[string]string
 )
 
 func init() {
@@ -48,6 +49,7 @@ func (c Box5G) Run() {
 			browseGoods(HttpClient.R(), result.Val()["pt_pin"])
 			lottery(HttpClient.R(), result.Val()["pt_pin"])
 		}
+		boxHelp(HttpClient.R())
 	}()
 }
 
@@ -93,6 +95,7 @@ func shareCode(c *resty.Request, user string) {
 	data := _box(c, fmt.Sprintf(`{"apiMapping": "/active/shareUrl"}`))
 	if json.Get(data, "code").Int() == 200 {
 		boxLogger.Printf("%s 助力码 %s", user, json.Get(data, "data").String())
+		boxShareCode = append(boxShareCode, map[string]string{"user": user, "code": json.Get(data, "data").String()})
 	} else {
 		boxLogger.Printf("%s 获取助力码失败 %s", user, json.Get(data, "msg").String())
 	}
@@ -182,5 +185,34 @@ func browseGoods(c *resty.Request, user string) {
 		}
 	} else {
 		boxLogger.Printf("%s 获取精彩好物列表失败 %s", user, json.Get(data, "msg").String())
+	}
+}
+
+// 助力
+func boxHelp(c *resty.Request) {
+	var data = Redis.Keys(ctx, "baipiao:ck:*")
+	for _, s := range data.Val() {
+		result := Redis.HGetAll(ctx, s)
+		c.SetCookies([]*http.Cookie{
+			{
+				Name:  "pt_pin",
+				Value: result.Val()["pt_pin"],
+			}, {
+				Name:  "pt_key",
+				Value: result.Val()["pt_key"],
+			},
+		})
+		for i := 0; i < len(boxShareCode); i++ {
+			ticker := time.NewTimer(2 * time.Second)
+			select {
+			case <-ticker.C:
+				if result.Val()["pt_pin"] != boxShareCode[i]["user"] {
+					boxLogger.Printf(`账号%s去助力%s`, result.Val()["pt_pin"], boxShareCode[i]["code"])
+					resp := _box(c, fmt.Sprintf(`{"shareId": "%s","apiMapping": "/active/addShare"}`, boxShareCode[i]["code"]))
+					boxLogger.Println(resp)
+				}
+			}
+			ticker.Stop()
+		}
 	}
 }
