@@ -27,6 +27,10 @@ type SignInfo struct {
 	SignID       string `json:"signId"`
 }
 
+var signLogger *log.Logger
+
+//var signLogger *log.signLogger
+
 func init() {
 	typefac.RegisterType(Sign{})
 	log.Println("京东签到合集")
@@ -34,19 +38,7 @@ func init() {
 
 // Run @Cron 0 3,19 * * *
 func (c Sign) Run() {
-	//file := fmt.Sprintf("%s/%s.log", "./logs/jd_sign", time.Now().Format("2006-01-02-15-04-05"))
-	//loggerFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	//defer func(loggerFile *os.File) {
-	//	err := loggerFile.Close()
-	//	if err != nil {
-	//		log.Println(err)
-	//	}
-	//}(loggerFile)
-	//if err != nil {
-	//	log.Println(err)
-	//}
-	//logger = log.New(loggerFile, "[京喜牧场] ", log.Ldate|log.Ltime|log.Llongfile|log.Lshortfile)
-	initLogger("./logs/jd_sign", "京东签到合集")
+	signLogger = initLogger("./logs/jd_sign", "京东签到合集")
 	var data = Redis.Keys(ctx, "baipiao:ck:*")
 	go func() {
 		for _, s := range data.Val() {
@@ -81,11 +73,11 @@ func beanSign(c *resty.Request, user string) {
 	resp, _ := c.Post("https://api.m.jd.com/client.action?functionId=signBeanIndex&appid=ld")
 	status := json.Get(string(resp.Body()), "data.status").String()
 	if status == "1" {
-		log.Println(user, "签到京豆签到成功!")
+		signLogger.Println(user, "签到京豆签到成功!")
 	} else if status == "2" {
-		log.Println(user, "签到京豆今日已签到")
+		signLogger.Println(user, "签到京豆今日已签到")
 	} else {
-		log.Println(user, "签到京豆签到失败")
+		signLogger.Println(user, "签到京豆签到失败")
 	}
 }
 
@@ -107,7 +99,7 @@ func jdShop(c *resty.Request, name, data, user string) {
 		if result.Map()["template"].String() == "signIn" {
 			signInfo := result.Map()["signInfos"]
 			if signInfo.Map()["signStat"].String() == "1" {
-				log.Printf("%s,%s今日已签到!", name, user)
+				signLogger.Printf("%s,%s今日已签到!", name, user)
 			} else {
 				//params := new(SignInfo)
 				params, _ := j.Marshal(signInfo.Map()["params"].String())
@@ -123,14 +115,14 @@ func jdShopSign(c *resty.Request, name, body, user string) {
 		"client": "wh5",
 	}).Post("https://api.m.jd.com/client.action?functionId=userSign")
 	if err != nil {
-		log.Println(name, user, "签到异常", err)
+		signLogger.Println(name, user, "签到异常", err)
 	}
 	if strings.Contains(string(resp.Body()), "签到成功") {
-		log.Println(name, user, "签到成功")
+		signLogger.Println(name, user, "签到成功")
 	} else if strings.Contains(string(resp.Body()), "已签到") {
-		log.Println(name, user, "今日已签到")
+		signLogger.Println(name, user, "今日已签到")
 	} else {
-		log.Println(name, user, "签到失败")
+		signLogger.Println(name, user, "签到失败")
 	}
 }
 

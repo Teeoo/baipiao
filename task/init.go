@@ -52,7 +52,7 @@ func init() {
 		Redis.Set(ctx, "baipiao:auth", fmt.Sprintf("%s:%s", username, string(hash)), 0)
 		logger.Printf("用户名为:%s 密码为:%s\n", username, password)
 	}
-	// 加载任务
+	// 加载原有任务
 	var data = Redis.Keys(ctx, "baipiao:cron:*")
 	for _, v := range data.Val() {
 		val := Redis.HGetAll(ctx, v)
@@ -63,6 +63,11 @@ func init() {
 			logger.Println(err)
 		}
 		Redis.HSet(ctx, v, "id", strconv.Itoa(int(job)))
+	}
+	// ast.ScanFuncDeclByComment("/Users/lee/go/src/github.com/teeoo/baipiao/jd/jd_sign.go","","@Cron")
+	// 初始任务
+	if len(data.Val()) == 0 {
+
 	}
 }
 

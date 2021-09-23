@@ -13,8 +13,6 @@ import (
 	"time"
 )
 
-//var logger *log.Logger
-
 func PathExists(path string) {
 	_, err := os.Stat(path)
 	if err != nil && os.IsNotExist(err) {
@@ -64,7 +62,7 @@ func getRandSeek() int64 {
 
 }
 
-func initLogger(path, prefix string) {
+func initLogger(path, prefix string) *log.Logger {
 	PathExists(path)
 	loggerFile, err := os.OpenFile(fmt.Sprintf("%s/%s.log", path, time.Now().Format("2006-01-02-15-04-05")), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -78,8 +76,8 @@ func initLogger(path, prefix string) {
 	//}(loggerFile)
 	//io.MultiWriter([]io.Writer{loggerFile, os.Stdout}...)
 	//log.SetOutput(io.MultiWriter(os.Stdout, loggerFile))
-	log.SetOutput(io.MultiWriter(os.Stdout, loggerFile))
-	log.SetPrefix(fmt.Sprintf("[%s] ", prefix))
-	log.SetFlags(log.Ldate | log.Ltime | log.Llongfile | log.Lshortfile)
-	//logger = log.New(io.MultiWriter([]io.Writer{loggerFile, os.Stdout}...), fmt.Sprintf("[%s] ", prefix), log.Ldate|log.Ltime|log.Llongfile|log.Lshortfile)
+	//log.SetOutput(io.MultiWriter(os.Stdout, loggerFile))
+	//log.SetPrefix(fmt.Sprintf("[%s] ", prefix))
+	//log.SetFlags(log.Ldate | log.Ltime | log.Llongfile | log.Lshortfile)
+	return log.New(io.MultiWriter(os.Stdout, loggerFile), fmt.Sprintf("[%s] ", prefix), log.Ldate|log.Ltime|log.Llongfile|log.Lshortfile)
 }

@@ -103,14 +103,15 @@ type Petinfo struct {
 
 var ShareCode []map[string]string
 
+var pastureLogger *log.Logger
+
 func init() {
 	typefac.RegisterType(Pasture{})
 	log.Println("京喜APP->京喜牧场->定时收金币/割草/投喂小鸡")
 }
 
-// Run @Cron 40 */1 * * *
 func (c Pasture) Run() {
-	initLogger("./logs/jx_pasture", "京喜牧场")
+	pastureLogger = initLogger("./logs/jx_pasture", "京喜牧场")
 	var data = Redis.Keys(ctx, "baipiao:ck:*")
 	go func() {
 		for _, s := range data.Val() {
@@ -143,7 +144,7 @@ func homeData(c *resty.Request, user string) {
 	homePageInfo := new(HomePageInfo)
 	err := j.Unmarshal([]byte(data), homePageInfo)
 	if err != nil {
-		log.Println("首页数据获取出错", err)
+		pastureLogger.Println("首页数据获取出错", err)
 	}
 	coins = homePageInfo.Data.Coins
 	activeId = homePageInfo.Data.Activeid
@@ -157,16 +158,16 @@ func homeData(c *resty.Request, user string) {
 		foodNum = homePageInfo.Data.Materialinfo[0].Value
 	}
 	ShareCode = append(ShareCode, map[string]string{"user": user, "code": homePageInfo.Data.Sharekey})
-	log.Printf("%s 的互助码为:%s", user, homePageInfo.Data.Sharekey)
+	pastureLogger.Printf("%s 的互助码为:%s", user, homePageInfo.Data.Sharekey)
 }
 
 // 收牛的金币
 func goldFromBull(c *resty.Request, user string) {
 	data := request(c, "jxmc/operservice/GetCoin", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp,token","token": "%s"}`, getToken(strconv.Itoa(cowInfo.Lastgettime))), user)
 	if json.Get(data, "ret").Int() == 0 {
-		log.Printf("%s 成功收牛牛, 获得金币:%s", user, json.Get(data, "data.addcoin").String())
+		pastureLogger.Printf("%s 成功收牛牛, 获得金币:%s", user, json.Get(data, "data.addcoin").String())
 	} else {
-		log.Printf("%s 收取牛牛失败:%s", user, json.Get(data, "message").String())
+		pastureLogger.Printf("%s 收取牛牛失败:%s", user, json.Get(data, "message").String())
 	}
 }
 
@@ -174,15 +175,15 @@ func goldFromBull(c *resty.Request, user string) {
 func dailyFood(c *resty.Request, user string) {
 	data := request(c, "/jxmc/operservice/GetVisitBackCabbage", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp"}`), user)
 	if json.Get(data, "ret").Int() == 0 {
-		log.Printf("%s 成功领取白菜:%s", user, data)
+		pastureLogger.Printf("%s 成功领取白菜:%s", user, data)
 	} else {
-		log.Printf("%s 领取白菜失败:%s", user, json.Get(data, "message").String())
+		pastureLogger.Printf("%s 领取白菜失败:%s", user, json.Get(data, "message").String())
 	}
 }
 
 // 买白菜
 func buyFood(c *resty.Request, user string) {
-	log.Printf("%s 当前白菜 %s 棵 当前金币 %s", user, strconv.Itoa(foodNum), strconv.Itoa(coins))
+	pastureLogger.Printf("%s 当前白菜 %s 棵 当前金币 %s", user, strconv.Itoa(foodNum), strconv.Itoa(coins))
 food:
 	for foodNum <= 1000 && coins >= 5000 {
 		ticker := time.NewTimer(1 * time.Second)
@@ -192,9 +193,9 @@ food:
 			if json.Get(data, "ret").Int() == 200 {
 				coins -= 5000
 				foodNum += 100
-				log.Printf("%s 成功购买白菜:%s", user, data)
+				pastureLogger.Printf("%s 成功购买白菜:%s", user, data)
 			} else {
-				log.Printf("%s 购买白菜失败:%s", user, json.Get(data, "message").String())
+				pastureLogger.Printf("%s 购买白菜失败:%s", user, json.Get(data, "message").String())
 				ticker.Stop()
 				break food
 			}
@@ -206,7 +207,7 @@ food:
 // 投喂小🐔
 func feed(c *resty.Request, user string) {
 	if foodNum < 10 {
-		log.Printf("%s当前白菜不足10棵,无法喂小鸡", user)
+		pastureLogger.Printf("%s当前白菜不足10棵,无法喂小鸡", user)
 		return
 	}
 food:
@@ -216,17 +217,17 @@ food:
 		case <-ticker.C:
 			data := request(c, "jxmc/operservice/Feed", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp"}`), user)
 			if json.Get(data, "ret").Int() == 0 {
-				log.Printf("%s 成功投喂一次小鸡:%s", user, data)
+				pastureLogger.Printf("%s 成功投喂一次小鸡:%s", user, data)
 				foodNum = int(json.Get(data, "data.newnum").Int())
 			} else if json.Get(data, "ret").Int() == 2020 && json.Get(data, "data.maintaskId").String() == "pause" {
 				result := request(c, "jxmc/operservice/GetSelfResult", fmt.Sprintf(`{"_stk": "channel,itemid,sceneid,type","petid":"%s","type":"11"}`, petInfoList[0].Petid), user)
 				if json.Get(result, "ret").Int() == 0 {
-					log.Printf("%s 成功收取一枚金蛋, 当前金蛋:%s", user, json.Get(result, "data.newnum"))
+					pastureLogger.Printf("%s 成功收取一枚金蛋, 当前金蛋:%s", user, json.Get(result, "data.newnum"))
 				}
 			} else {
-				log.Printf("%s 投喂失败:%s", user, data)
+				pastureLogger.Printf("%s 投喂失败:%s", user, data)
 				if json.Get(data, "ret").Int() == 2005 || json.Get(data, "ret").Int() == 2004 {
-					log.Println("小鸡吃太饱了,或者任务未解锁")
+					pastureLogger.Println("小鸡吃太饱了,或者任务未解锁")
 					ticker.Stop()
 					break food
 				}
@@ -244,14 +245,14 @@ mo:
 		case <-ticker.C:
 			data := request(c, "jxmc/operservice/Action", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,jxmc_jstoken,phoneid,sceneid,timestamp,type","type":"2"}`), user)
 			if json.Get(data, "ret").Int() != 0 {
-				log.Printf("%s 第 %s 次割草失败 %s", user, strconv.Itoa(i), data)
+				pastureLogger.Printf("%s 第 %s 次割草失败 %s", user, strconv.Itoa(i), data)
 				break mo
 			}
-			log.Printf("%s 第 %s 次割草成功,获得金币 %s", user, strconv.Itoa(i), json.Get(data, "data.addcoins").String())
+			pastureLogger.Printf("%s 第 %s 次割草成功,获得金币 %s", user, strconv.Itoa(i), json.Get(data, "data.addcoins").String())
 			if json.Get(data, "data.surprise").Bool() {
 				result := request(c, "jxmc/operservice/GetSelfResult", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,sceneid,type","type":"14"}`), user)
 				if json.Get(result, "ret").Int() == 0 {
-					log.Printf("%s 获得割草奖励 %s", user, json.Get(result, "data.prizepool").String())
+					pastureLogger.Printf("%s 获得割草奖励 %s", user, json.Get(result, "data.prizepool").String())
 				}
 			}
 		}
@@ -265,17 +266,17 @@ func sign(c *resty.Request, user string) {
 	if json.Get(data, "ret").Int() == 0 {
 		for _, result := range json.Get(data, "data.signlist").Array() {
 			if result.Map()["hasdone"].Bool() {
-				log.Printf("%s 今日已签到", user)
+				pastureLogger.Printf("%s 今日已签到", user)
 			}
 			res := request(c, "jxmc/operservice/GetSignReward", fmt.Sprintf(`{"_stk"": "channel,currdate,sceneid","currdate":"%s"}`, json.Get(data, "data.currdate")), user)
 			if json.Get(res, "ret").Int() == 0 {
-				log.Printf("%s 签到成功", user)
+				pastureLogger.Printf("%s 签到成功", user)
 			} else {
-				log.Printf("%s 签到失败:%s", user, json.Get(res, "message").String())
+				pastureLogger.Printf("%s 签到失败:%s", user, json.Get(res, "message").String())
 			}
 		}
 	} else {
-		log.Printf("%s 获取签到数据失败:%s", user, json.Get(data, "message").String())
+		pastureLogger.Printf("%s 获取签到数据失败:%s", user, json.Get(data, "message").String())
 	}
 }
 
@@ -285,29 +286,29 @@ func tasks(c *resty.Request, user string, max int) {
 		//var flag = false
 		result := request(c, "/newtasksys/newtasksys_front/GetUserTaskStatusList", fmt.Sprintf(`{"_stk": "bizCode,dateType,jxpp_wxapp_type,showAreaTaskFlag,source","source":"jxmc","bizCode":"jxmc","dateType":"","showAreaTaskFlag":"0","jxpp_wxapp_type":"7","gty":"ajax"}`), user)
 		if json.Get(result, "ret").Int() != 0 {
-			log.Printf("%s 获取每日任务列表失败 %s", user, result)
+			pastureLogger.Printf("%s 获取每日任务列表失败 %s", user, result)
 		}
 		item := json.Get(result, "data.userTaskStatusList").Array()
-		log.Println(item)
+		pastureLogger.Println(item)
 		for _, r := range item {
 			ticker := time.NewTimer(1 * time.Second)
 			select {
 			case <-ticker.C:
 				taskType, taskName := r.Map()["taskType"].Int(), r.Map()["taskName"].String()
 				if r.Map()["awardStatus"].Int() == 1 {
-					log.Printf("%s 奖励已领取 %s", user, taskName)
+					pastureLogger.Printf("%s 奖励已领取 %s", user, taskName)
 				}
 				if r.Map()["completedTimes"].Int() >= r.Map()["targetTimes"].Int() {
 					data := request(c, "/newtasksys/newtasksys_front/Award", fmt.Sprintf(`{"_stk": "bizCode,source,taskId","source":"jxmc","bizCode":"jxmc","gty":"ajax","taskId":"%s"}`, r.Map()["taskId"].String()), user)
 					if json.Get(data, "ret").Int() == 0 {
-						log.Printf("%s 成功领取任务《%s》奖励!", user, taskName)
+						pastureLogger.Printf("%s 成功领取任务《%s》奖励!", user, taskName)
 					}
 					time.Sleep(2 * time.Second)
 				}
 				if taskType == 2 {
 					data := request(c, "/newtasksys/newtasksys_front/DoTask", fmt.Sprintf(`{"_stk": "bizCode,configExtra,source,taskId","source":"jxmc","bizCode":"jxmc","gty":"ajax","taskId":"%s","configExtra":""}`, r.Map()["taskId"].String()), user)
 					if json.Get(data, "ret").Int() == 0 {
-						log.Printf("%s 成功完成任务《%s》!", user, taskName)
+						pastureLogger.Printf("%s 成功完成任务《%s》!", user, taskName)
 					}
 				}
 			}
@@ -325,14 +326,14 @@ chicken:
 		case <-ticker.C:
 			data := request(c, "jxmc/operservice/Action", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,petid,sceneid,type","type":"1","petid":"%s"}`, petInfoList[0].Petid), user)
 			if json.Get(data, "ret").Int() != 0 {
-				log.Printf("%s 第 %s 次扫鸡腿失败 %s", user, strconv.Itoa(i), data)
+				pastureLogger.Printf("%s 第 %s 次扫鸡腿失败 %s", user, strconv.Itoa(i), data)
 				break chicken
 			}
-			log.Printf("%s 第 %s 次扫鸡腿成功, 获得金币: %s", user, strconv.Itoa(i), json.Get(data, "data.addcoins").String())
+			pastureLogger.Printf("%s 第 %s 次扫鸡腿成功, 获得金币: %s", user, strconv.Itoa(i), json.Get(data, "data.addcoins").String())
 			if json.Get(data, "data.surprise").Bool() {
 				result := request(c, "jxmc/operservice/GetSelfResult", fmt.Sprintf(`{"_stk": "activeid,activekey,channel,sceneid,type","type":"14"}`), user)
 				if json.Get(result, "ret").Int() == 0 {
-					log.Printf("%s 获得割草奖励 %s", user, json.Get(result, "data.prizepool").String())
+					pastureLogger.Printf("%s 获得割草奖励 %s", user, json.Get(result, "data.prizepool").String())
 				}
 			}
 		}
@@ -359,9 +360,9 @@ func help(c *resty.Request) {
 			select {
 			case <-ticker.C:
 				if result.Val()["pt_pin"] != ShareCode[i]["user"] {
-					log.Printf(`账号%s去助力%s`, result.Val()["pt_pin"], ShareCode[i]["code"])
+					pastureLogger.Printf(`账号%s去助力%s`, result.Val()["pt_pin"], ShareCode[i]["code"])
 					resp := request(c, "/jxmc/operservice/EnrollFriend", fmt.Sprintf(`{"_stk": "channel,sceneid,sharekey","sharekey":"%s"}`, ShareCode[i]["code"]), result.Val()["pt_pin"])
-					log.Println(resp)
+					pastureLogger.Println(resp)
 				}
 			}
 			ticker.Stop()
