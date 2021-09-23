@@ -15,7 +15,7 @@ func init() {
 	Redis = redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%s", Config.Config.Redis.Addr, strconv.FormatInt(int64(Config.Config.Redis.Port), 10)),
 		Password: Config.Config.Redis.Password,
-		DB:       1,
+		DB:       Config.Config.Redis.Db,
 	})
 	pong, err := Redis.Ping(context.Background()).Result()
 	if err != nil {

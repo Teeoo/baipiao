@@ -9,6 +9,7 @@ type redis struct {
 	Addr     string
 	Password string
 	Port     int
+	Db       int
 }
 
 type jwt struct {

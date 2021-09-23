@@ -2,7 +2,7 @@
 Addr = "127.0.0.1"
 Password = ""
 Port = 6379
-Db = 1
+Db = 3
 [Jwt]
 JWT_SECRET = 'o0oo00oo00oo0oo0'
 [Web]

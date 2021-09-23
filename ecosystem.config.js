@@ -5,5 +5,7 @@ module.exports = {
             exec_mode: "fork",
             watch: 'config.toml',
             interpreter: "./app",
-        }]
+            script: '.',
+        }
+    ]
 };
