@@ -64,7 +64,7 @@ func init() {
 	getEncrypt()
 }
 
-func request(c *resty.Request, path, body, user string) string {
+func Jxrequest(c *resty.Request, path, body, user string) string {
 	phoneId := GetRandomString(16)
 	timestamp := time.Now().Unix() * 1000
 	jsToken := tom5(fmt.Sprintf("%s%s%stPOamqCuk9NLgVPAljUyIHcPRmKlVxDy", user, strconv.FormatInt(timestamp, 10), phoneId))

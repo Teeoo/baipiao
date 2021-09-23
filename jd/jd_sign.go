@@ -29,8 +29,6 @@ type SignInfo struct {
 
 var signLogger *log.Logger
 
-//var signLogger *log.signLogger
-
 func init() {
 	typefac.RegisterType(Sign{})
 	log.Println("京东签到合集")
