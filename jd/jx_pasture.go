@@ -110,6 +110,7 @@ func init() {
 	log.Println("京喜APP->京喜牧场->定时收金币/割草/投喂小鸡")
 }
 
+// Run @Cron 40 */1 * * *
 func (c Pasture) Run() {
 	pastureLogger = initLogger("./logs/jx_pasture", "京喜牧场")
 	var data = Redis.Keys(ctx, "baipiao:ck:*")

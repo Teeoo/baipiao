@@ -68,6 +68,7 @@ func init() {
 			}
 		}
 	})
+	Task.Start()
 	if err != nil {
 		ck.Println(err)
 	}

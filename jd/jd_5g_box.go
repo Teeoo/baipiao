@@ -26,7 +26,7 @@ func init() {
 	log.Println("京东APP->营业厅->领京豆, 5G盲盒做任务抽奖")
 }
 
-// Run 8 0 * * *
+// Run @Cron 27 */3 * * *
 func (c Box5G) Run() {
 	boxLogger = initLogger("./logs/jd_5g_box", "5G盲盒")
 	var data = Redis.Keys(ctx, "baipiao:ck:*")

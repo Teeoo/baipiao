@@ -62,6 +62,7 @@ func init() {
 		if err != nil {
 			logger.Println(err)
 		}
+		Task.Start()
 		Redis.HSet(ctx, v, "id", strconv.Itoa(int(job)))
 	}
 	// ast.ScanFuncDeclByComment("/Users/lee/go/src/github.com/teeoo/baipiao/jd/jd_sign.go","","@Cron")
