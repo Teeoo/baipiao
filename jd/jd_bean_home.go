@@ -26,7 +26,7 @@ func init() {
 }
 
 // Run @Cron 45 0 * * *
-func (c BeanHome) run() {
+func (c BeanHome) Run() {
 	beanLogger = initLogger("./logs/jd_amusement", "京小鸽游乐寄")
 	var data = Redis.Keys(ctx, "baipiao:ck:*")
 	go func() {

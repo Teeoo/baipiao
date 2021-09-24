@@ -66,9 +66,8 @@ func init() {
 		Redis.HSet(ctx, v, "id", strconv.Itoa(int(job)))
 	}
 	// ast.ScanFuncDeclByComment("/Users/lee/go/src/github.com/teeoo/baipiao/jd/jd_sign.go","","@Cron")
-	// 初始任务
 	if len(data.Val()) == 0 {
-
+		//TODO:初始化时加载任务
 	}
 }
 
