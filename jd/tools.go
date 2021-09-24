@@ -127,3 +127,8 @@ func USER_AGENT() string {
 	r := rad.New(s)
 	return USER_AGENT_LIST[r.Intn(len(USER_AGENT_LIST))]
 }
+
+func randomInt(min, max int) int {
+	rad.Seed(time.Now().Unix())
+	return rad.Intn(max-min) + min
+}
