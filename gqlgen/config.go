@@ -47,7 +47,7 @@ func init() {
 			})
 			return nil, nil
 		}
-		_, err := parseToken(authHeaderParts[1], Config2.Config.Jwt.JWT_SECRET)
+		_, err := parseToken(authHeaderParts[1], Config2.Config.Jwt.JwtSecret)
 		if err != nil {
 			graphql.AddError(ctx, &gqlerror.Error{
 				Path:    graphql.GetPath(ctx),

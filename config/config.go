@@ -13,7 +13,7 @@ type redis struct {
 }
 
 type jwt struct {
-	JWT_SECRET string
+	JwtSecret string
 }
 
 type web struct {

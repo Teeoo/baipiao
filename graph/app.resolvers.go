@@ -74,7 +74,7 @@ func (r *queryResolver) Login(ctx context.Context, user *string, pwd *string) (s
 			ExpiresAt: time.Now().Add(7 * 24 * time.Hour).Unix(),
 			IssuedAt:  time.Now().Unix(),
 			Id:        *user,
-		}).SignedString([]byte(Config.Config.Jwt.JWT_SECRET))
+		}).SignedString([]byte(Config.Config.Jwt.JwtSecret))
 		return token, err
 	}
 	return "", err

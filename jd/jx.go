@@ -47,19 +47,6 @@ var (
 )
 
 func init() {
-	//PathExists("./logs/jx_init")
-	//file := fmt.Sprintf("%s/%s.log", "./logs/jx_init", time.Now().Format("2006-01-02-15-04-05"))
-	//loggerFile, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	//defer func(loggerFile *os.File) {
-	//	err := loggerFile.Close()
-	//	if err != nil {
-	//		log.Println(err)
-	//	}
-	//}(loggerFile)
-	//if err != nil {
-	//	log.Println(err)
-	//}
-	//logger = log.New(loggerFile, "[京喜初始化操作] ", log.Ldate|log.Ltime|log.Llongfile|log.Lshortfile)
 	initLogger("./logs/jx_init", "京喜初始化操作")
 	getEncrypt()
 }

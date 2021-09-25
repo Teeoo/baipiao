@@ -8,14 +8,11 @@ import (
 var funcMap = make(map[string]interface{})
 
 // RegFunc 注册一个函数
-// typefac.RegFunc("NewHuaweiSchool", NewHuaweiSchool)
 func RegFunc(name string, fc interface{}) {
 	funcMap[name] = fc
 }
 
 // Run 运行被注册的函数
-// usage: v, _ := typefac.Run("NewHuaweiSchool", "Euler2", 123)
-// school = v[0].Interface().(*HuaweiSchool)
 func Run(name string, params ...interface{}) (result []reflect.Value, err error) {
 	if _, ok := funcMap[name]; !ok {
 		err = errors.New(name + " does not exist.")
@@ -44,10 +41,6 @@ func RegisterType(typedNil interface{}) {
 }
 
 // CreateInstance 传入被注册的类型和初值，创建一个对象
-// usage: in := make(map[string]interface{})
-// in["Name"] = StcName{"Euler1"}
-// in["Id"] = 111
-// school := typefac.CreateInstance(classinfo, in).(School)
 func CreateInstance(name string, input map[string]interface{}) interface{} {
 	structObj := reflect.New(typeRegistry[name])
 	structObjValue := structObj.Elem()

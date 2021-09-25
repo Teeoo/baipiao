@@ -108,17 +108,6 @@ func initLogger(path, prefix string) *log.Logger {
 	if err != nil {
 		log.Println(err)
 	}
-	//defer func(loggerFile *os.File) {
-	//	err := loggerFile.Close()
-	//	if err != nil {
-	//		log.Println(err)
-	//	}
-	//}(loggerFile)
-	//io.MultiWriter([]io.Writer{loggerFile, os.Stdout}...)
-	//log.SetOutput(io.MultiWriter(os.Stdout, loggerFile))
-	//log.SetOutput(io.MultiWriter(os.Stdout, loggerFile))
-	//log.SetPrefix(fmt.Sprintf("[%s] ", prefix))
-	//log.SetFlags(log.Ldate | log.Ltime | log.Llongfile | log.Lshortfile)
 	return log.New(io.MultiWriter(os.Stdout, loggerFile), fmt.Sprintf("[%s] ", prefix), log.Ldate|log.Ltime|log.Llongfile|log.Lshortfile)
 }
 
