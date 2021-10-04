@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-var USER_AGENT_LIST = [...]string{
+var UserAgentList = [...]string{
 	"jdapp;android;10.0.2;10;network/wifi;Mozilla/5.0 (Linux; Android 10; ONEPLUS A5010 Build/QKQ1.191014.012; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/77.0.3865.120 MQQBrowser/6.2 TBS/045230 Mobile Safari/537.36",
 	"jdapp;iPhone;10.0.2;14.3;network/4g;Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148;supportJDSHWK/1",
 	"jdapp;android;10.0.2;9;network/4g;Mozilla/5.0 (Linux; Android 9; Mi Note 3 Build/PKQ1.181007.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/66.0.3359.126 MQQBrowser/6.2 TBS/045131 Mobile Safari/537.36",
@@ -108,13 +108,19 @@ func initLogger(path, prefix string) *log.Logger {
 	if err != nil {
 		log.Println(err)
 	}
+	defer func(loggerFile *os.File) {
+		err := loggerFile.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(loggerFile)
 	return log.New(io.MultiWriter(os.Stdout, loggerFile), fmt.Sprintf("[%s] ", prefix), log.Ldate|log.Ltime|log.Llongfile|log.Lshortfile)
 }
 
-func USER_AGENT() string {
+func UserAgent() string {
 	s := rad.NewSource(time.Now().Unix())
 	r := rad.New(s)
-	return USER_AGENT_LIST[r.Intn(len(USER_AGENT_LIST))]
+	return UserAgentList[r.Intn(len(UserAgentList))]
 }
 
 func randomInt(min, max int) int {

@@ -67,7 +67,7 @@ func _bean(c *resty.Request, functionId, body string) string {
 	case <-timer.C:
 		resp, err := c.SetHeaders(map[string]string{
 			//"content-type": "application/x-www-form-urlencoded",
-			"user-agent": USER_AGENT(),
+			"user-agent": UserAgent(),
 			"referer":    "https://h5.m.jd.com/rn/2E9A2bEeqQqBP9juVgPJvQQq6fJ/index.html",
 		}).SetBody(body).Post(u)
 		if err != nil {

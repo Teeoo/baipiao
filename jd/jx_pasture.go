@@ -126,26 +126,32 @@ func (c Pasture) Run() {
 					Value: result.Val()["pt_key"],
 				},
 			})
-			homeData(HttpClient.R(), result.Val()["pt_pin"])
-			goldFromBull(HttpClient.R(), result.Val()["pt_pin"])
-			sign(HttpClient.R(), result.Val()["pt_pin"])
-			dailyFood(HttpClient.R(), result.Val()["pt_pin"])
-			buyFood(HttpClient.R(), result.Val()["pt_pin"])
-			feed(HttpClient.R(), result.Val()["pt_pin"])
-			mowing(HttpClient.R(), result.Val()["pt_pin"], 20)
-			sweepChickenLegs(HttpClient.R(), result.Val()["pt_pin"], 8)
-			tasks(HttpClient.R(), result.Val()["pt_pin"], 10)
+			if homeData(HttpClient.R(), result.Val()["pt_pin"]) {
+				goldFromBull(HttpClient.R(), result.Val()["pt_pin"])
+				sign(HttpClient.R(), result.Val()["pt_pin"])
+				dailyFood(HttpClient.R(), result.Val()["pt_pin"])
+				buyFood(HttpClient.R(), result.Val()["pt_pin"])
+				feed(HttpClient.R(), result.Val()["pt_pin"])
+				mowing(HttpClient.R(), result.Val()["pt_pin"], 20)
+				sweepChickenLegs(HttpClient.R(), result.Val()["pt_pin"], 8)
+				tasks(HttpClient.R(), result.Val()["pt_pin"], 10)
+			}
 		}
 		help(HttpClient.R())
 	}()
 }
 
-func homeData(c *resty.Request, user string) {
+func homeData(c *resty.Request, user string) bool {
 	data := Jxrequest(c, "jxmc/queryservice/GetHomePageInfo", fmt.Sprintf(`{"isgift": "1","isquerypicksite": "1","_stk":"activeid,activekey,channel,isgift,isquerypicksite,sceneid"}`), user)
+	if json.Get(data, "ret").Int() != 0 {
+		pastureLogger.Printf("%s 首页数据获取出错 %s", user, json.Get(data, "message"))
+		return false
+	}
 	homePageInfo := new(HomePageInfo)
 	err := j.Unmarshal([]byte(data), homePageInfo)
 	if err != nil {
 		pastureLogger.Println("首页数据获取出错", err)
+		return false
 	}
 	coins = homePageInfo.Data.Coins
 	activeId = homePageInfo.Data.Activeid
@@ -159,7 +165,11 @@ func homeData(c *resty.Request, user string) {
 		foodNum = homePageInfo.Data.Materialinfo[0].Value
 	}
 	ShareCode = append(ShareCode, map[string]string{"user": user, "code": homePageInfo.Data.Sharekey})
+	if homePageInfo.Data.Sharekey == "" {
+		return false
+	}
 	pastureLogger.Printf("%s 的互助码为:%s", user, homePageInfo.Data.Sharekey)
+	return true
 }
 
 // 收牛的金币

@@ -69,7 +69,7 @@ func _box(c *resty.Request, body string) string {
 	case <-timer.C:
 		resp, err := c.SetHeaders(map[string]string{
 			"content-type": "application/x-www-form-urlencoded",
-			"user-agent":   USER_AGENT(),
+			"user-agent":   UserAgent(),
 			"referer":      "https://blindbox5g.jd.com",
 		}).Post(u)
 		if err != nil {
