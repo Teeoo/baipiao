@@ -7,9 +7,11 @@ import (
 	. "github.com/teeoo/baipiao/http"
 	"github.com/teeoo/baipiao/typefac"
 	json "github.com/tidwall/gjson"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 )
@@ -17,18 +19,25 @@ import (
 type Box5G struct{}
 
 var (
-	boxLogger    *log.Logger
 	boxShareCode []map[string]string
 )
 
 func init() {
+	PathExists("./logs/jd_5g_box")
 	typefac.RegisterType(Box5G{})
 	log.Println("京东APP->营业厅->领京豆, 5G盲盒做任务抽奖")
 }
 
 // Run @Cron 27 */3 * * *
 func (c Box5G) Run() {
-	boxLogger = initLogger("./logs/jd_5g_box", "5G盲盒")
+	loggerFile, err := os.OpenFile(fmt.Sprintf("%s/%s.log", "./logs/jd_5g_box", time.Now().Format("2006-01-02-15-04-05")), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Println(err)
+	}
+	log.SetOutput(io.MultiWriter(os.Stdout, loggerFile))
+	log.SetPrefix(fmt.Sprintf("[%s]", "5G盲盒"))
+	log.SetFlags(log.Ldate | log.Ltime | log.Llongfile | log.Lshortfile)
+
 	var data = Redis.Keys(ctx, "baipiao:ck:*")
 	go func() {
 		for _, s := range data.Val() {
@@ -84,9 +93,9 @@ func _box(c *resty.Request, body string) string {
 func coin(c *resty.Request, user string) {
 	data := _box(c, fmt.Sprintf(`{"apiMapping": "/active/getCoin"}`))
 	if json.Get(data, "code").Int() == 200 {
-		boxLogger.Printf("%s 成功收取信号值 %s", user, json.Get(data, "data").String())
+		log.Printf("%s 成功收取信号值 %s", user, json.Get(data, "data").String())
 	} else {
-		boxLogger.Printf("%s 收取信号值失败 %s", user, json.Get(data, "msg").String())
+		log.Printf("%s 收取信号值失败 %s", user, json.Get(data, "msg").String())
 	}
 }
 
@@ -94,10 +103,10 @@ func coin(c *resty.Request, user string) {
 func shareCode(c *resty.Request, user string) {
 	data := _box(c, fmt.Sprintf(`{"apiMapping": "/active/shareUrl"}`))
 	if json.Get(data, "code").Int() == 200 {
-		boxLogger.Printf("%s 助力码 %s", user, json.Get(data, "data").String())
+		log.Printf("%s 助力码 %s", user, json.Get(data, "data").String())
 		boxShareCode = append(boxShareCode, map[string]string{"user": user, "code": json.Get(data, "data").String()})
 	} else {
-		boxLogger.Printf("%s 获取助力码失败 %s", user, json.Get(data, "msg").String())
+		log.Printf("%s 获取助力码失败 %s", user, json.Get(data, "msg").String())
 	}
 }
 
@@ -106,32 +115,32 @@ func taskList(c *resty.Request, user string, max int) {
 	data := _box(c, fmt.Sprintf(`{"apiMapping": "/active/taskList"}`))
 	if json.Get(data, "code").Int() == 200 {
 		task := json.Get(data, "data")
-		//boxLogger.Printf("%s %s", user, task.Map())
+		//log.Printf("%s %s", user, task.Map())
 		var flag = false
 		for _, result := range task.Map() {
 			if result.Map()["type"].Int() != 5 || result.Map()["type"].Int() != 8 {
 				if result.Map()["type"].Int() == 4 {
 					flag = true
 					_box(c, fmt.Sprintf(`{"skuId": "%s", "apiMapping": "/active/browseProduct"}`, result.Map()["skuId"].String()))
-					boxLogger.Printf("%s 浏览商品 %s", user, result.Map()["skuId"].String())
+					log.Printf("%s 浏览商品 %s", user, result.Map()["skuId"].String())
 				}
 
 				if result.Map()["type"].Int() == 2 {
 					flag = true
 					_box(c, fmt.Sprintf(`{"shopId": "%s", "apiMapping": "/active/followShop"}`, result.Map()["shopId"].String()))
-					boxLogger.Printf("%s 关注店铺 %s ,获得信号值 %s %s", user, result.Map()["shopId"].String(), result.Map()["coinNum"], result)
+					log.Printf("%s 关注店铺 %s ,获得信号值 %s %s", user, result.Map()["shopId"].String(), result.Map()["coinNum"], result)
 				}
 
 				if result.Map()["type"].Int() == 1 {
 					flag = true
 					_box(c, fmt.Sprintf(`{"activeId": "%s", "apiMapping": "/active/strollActive"}`, result.Map()["activeId"].String()))
-					boxLogger.Printf("%s 浏览会场 %s", user, result.Map()["skuId"].String())
+					log.Printf("%s 浏览会场 %s", user, result.Map()["skuId"].String())
 				}
 
 			}
 		}
 		if flag {
-			boxLogger.Printf("%s 8秒后领取任务奖励!", user)
+			log.Printf("%s 8秒后领取任务奖励!", user)
 			timer := time.NewTimer(8 * time.Second)
 			select {
 			case <-timer.C:
@@ -139,9 +148,9 @@ func taskList(c *resty.Request, user string, max int) {
 					if result.Map()["type"].Int() != 5 || result.Map()["type"].Int() != 8 || result.Map()["type"].Int() != 2 {
 						resp := _box(c, fmt.Sprintf(`{"type": "%s", "apiMapping": "/active/taskCoin"}`, result.Map()["type"].String()))
 						if json.Get(resp, "code").Int() == 200 {
-							boxLogger.Printf("%s 成功领取任务奖励,获得信号值 %s 京豆: %s", user, json.Get(resp, "data.coinNum"), json.Get(resp, "data.jbeanNum"))
+							log.Printf("%s 成功领取任务奖励,获得信号值 %s 京豆: %s", user, json.Get(resp, "data.coinNum"), json.Get(resp, "data.jbeanNum"))
 						} else {
-							boxLogger.Printf("%s 无法领取任务奖励 %s", user, json.Get(resp, "msg"))
+							log.Printf("%s 无法领取任务奖励 %s", user, json.Get(resp, "msg"))
 						}
 					}
 				}
@@ -150,7 +159,7 @@ func taskList(c *resty.Request, user string, max int) {
 		}
 		go taskList(c, user, max-1)
 	} else {
-		boxLogger.Printf("%s 获取任务列表失败 %s", user, json.Get(data, "msg").String())
+		log.Printf("%s 获取任务列表失败 %s", user, json.Get(data, "msg").String())
 	}
 }
 
@@ -158,9 +167,9 @@ func taskList(c *resty.Request, user string, max int) {
 func lottery(c *resty.Request, user string) {
 	data := _box(c, fmt.Sprintf(`{"apiMapping": "/prize/lottery"}`))
 	if json.Get(data, "code").Int() == 200 {
-		boxLogger.Printf("%s 奖品 %s", user, json.Get(data, "data").String())
+		log.Printf("%s 奖品 %s", user, json.Get(data, "data").String())
 	} else {
-		boxLogger.Printf("%s 抽奖失败 %s", user, json.Get(data, "msg").String())
+		log.Printf("%s 抽奖失败 %s", user, json.Get(data, "msg").String())
 	}
 }
 
@@ -177,14 +186,14 @@ func browseGoods(c *resty.Request, user string) {
 					_box(c, fmt.Sprintf(`{"type": "0", "id": "%s", "apiMapping": "/active/homeGoBrowse"}`, result.Map()["id"].String()))
 					resp := _box(c, fmt.Sprintf(`{"type": "0", "id": "%s", "apiMapping": "/active/taskHomeCoin"}`, result.Map()["id"].String()))
 					if json.Get(resp, "code").Int() == 200 {
-						boxLogger.Printf("%s 浏览商品 %s", user, result.Map()["item"].String(), resp)
+						log.Printf("%s 浏览商品 %s", user, result.Map()["item"].String(), resp)
 					}
 				}
 				timer.Stop()
 			}
 		}
 	} else {
-		boxLogger.Printf("%s 获取精彩好物列表失败 %s", user, json.Get(data, "msg").String())
+		log.Printf("%s 获取精彩好物列表失败 %s", user, json.Get(data, "msg").String())
 	}
 }
 
@@ -207,9 +216,9 @@ func boxHelp(c *resty.Request) {
 			select {
 			case <-ticker.C:
 				if result.Val()["pt_pin"] != boxShareCode[i]["user"] {
-					boxLogger.Printf(`账号%s去助力%s`, result.Val()["pt_pin"], boxShareCode[i]["code"])
+					log.Printf(`账号%s去助力%s`, result.Val()["pt_pin"], boxShareCode[i]["code"])
 					resp := _box(c, fmt.Sprintf(`{"shareId": "%s","apiMapping": "/active/addShare"}`, boxShareCode[i]["code"]))
-					boxLogger.Println(resp)
+					log.Println(resp)
 				}
 			}
 			ticker.Stop()

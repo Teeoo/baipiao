@@ -11,8 +11,10 @@ import (
 	"github.com/robertkrimen/otto"
 	. "github.com/teeoo/baipiao/http"
 	json "github.com/tidwall/gjson"
+	"io"
 	"log"
 	"net/url"
+	"os"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -47,7 +49,12 @@ var (
 )
 
 func init() {
-	initLogger("./logs/jx_init", "京喜初始化操作")
+	PathExists("./logs/jx_init")
+	loggerFile, err := os.OpenFile(fmt.Sprintf("%s/%s.log", "./logs/jx_init", time.Now().Format("2006-01-02-15-04-05")), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Println(err)
+	}
+	log.New(io.MultiWriter(os.Stdout, loggerFile), fmt.Sprintf("[%s]", "京喜初始化操作"), log.Ldate|log.Ltime|log.Llongfile|log.Lshortfile)
 	getEncrypt()
 }
 

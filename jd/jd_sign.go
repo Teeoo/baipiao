@@ -8,9 +8,12 @@ import (
 	. "github.com/teeoo/baipiao/cache"
 	"github.com/teeoo/baipiao/typefac"
 	json "github.com/tidwall/gjson"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 )
 
 type Sign struct{}
@@ -27,16 +30,21 @@ type SignInfo struct {
 	SignID       string `json:"signId"`
 }
 
-var signLogger *log.Logger
-
 func init() {
+	PathExists("./logs/jd_sign")
 	typefac.RegisterType(Sign{})
 	log.Println("京东签到合集")
 }
 
 // Run @Cron 0 3,19 * * *
 func (c Sign) Run() {
-	signLogger = initLogger("./logs/jd_sign", "京东签到合集")
+	loggerFile, err := os.OpenFile(fmt.Sprintf("%s/%s.log", "./logs/jd_sign", time.Now().Format("2006-01-02-15-04-05")), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Println(err)
+	}
+	log.SetOutput(io.MultiWriter(os.Stdout, loggerFile))
+	log.SetPrefix(fmt.Sprintf("[%s]", "京东签到合集"))
+	log.SetFlags(log.Ldate | log.Ltime | log.Llongfile | log.Lshortfile)
 	var data = Redis.Keys(ctx, "baipiao:ck:*")
 	go func() {
 		for _, s := range data.Val() {
@@ -71,11 +79,11 @@ func beanSign(c *resty.Request, user string) {
 	resp, _ := c.Post("https://api.m.jd.com/client.action?functionId=signBeanIndex&appid=ld")
 	status := json.Get(string(resp.Body()), "data.status").String()
 	if status == "1" {
-		signLogger.Println(user, "签到京豆签到成功!")
+		log.Println(user, "签到京豆签到成功!")
 	} else if status == "2" {
-		signLogger.Println(user, "签到京豆今日已签到")
+		log.Println(user, "签到京豆今日已签到")
 	} else {
-		signLogger.Println(user, "签到京豆签到失败")
+		log.Println(user, "签到京豆签到失败")
 	}
 }
 
@@ -97,7 +105,7 @@ func jdShop(c *resty.Request, name, data, user string) {
 		if result.Map()["template"].String() == "signIn" {
 			signInfo := result.Map()["signInfos"]
 			if signInfo.Map()["signStat"].String() == "1" {
-				signLogger.Printf("%s,%s今日已签到!", name, user)
+				log.Printf("%s,%s今日已签到!", name, user)
 			} else {
 				//params := new(SignInfo)
 				params, _ := j.Marshal(signInfo.Map()["params"].String())
@@ -113,14 +121,14 @@ func jdShopSign(c *resty.Request, name, body, user string) {
 		"client": "wh5",
 	}).Post("https://api.m.jd.com/client.action?functionId=userSign")
 	if err != nil {
-		signLogger.Println(name, user, "签到异常", err)
+		log.Println(name, user, "签到异常", err)
 	}
 	if strings.Contains(string(resp.Body()), "签到成功") {
-		signLogger.Println(name, user, "签到成功")
+		log.Println(name, user, "签到成功")
 	} else if strings.Contains(string(resp.Body()), "已签到") {
-		signLogger.Println(name, user, "今日已签到")
+		log.Println(name, user, "今日已签到")
 	} else {
-		signLogger.Println(name, user, "签到失败")
+		log.Println(name, user, "签到失败")
 	}
 }
 

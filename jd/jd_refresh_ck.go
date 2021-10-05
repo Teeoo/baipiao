@@ -5,17 +5,24 @@ import (
 	. "github.com/teeoo/baipiao/cache"
 	. "github.com/teeoo/baipiao/cron"
 	json "github.com/tidwall/gjson"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"time"
 )
 
-var ck *log.Logger
-
 func init() {
-	ck = initLogger("./logs/jd_refresh_ck", "刷新ck")
-	_, err := Task.AddFunc("11 23 * * *", func() {
-		ck = initLogger("./logs/jd_refresh_ck", "刷新ck")
+	PathExists("./logs/jd_refresh_ck")
+	loggerFile, err := os.OpenFile(fmt.Sprintf("%s/%s.log", "./logs/jd_refresh_ck", time.Now().Format("2006-01-02-15-04-05")), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Println(err)
+	}
+	log.SetOutput(io.MultiWriter(os.Stdout, loggerFile))
+	log.SetPrefix(fmt.Sprintf("[%s]", "刷新ck"))
+	log.SetFlags(log.Ldate | log.Ltime | log.Llongfile | log.Lshortfile)
+	_, err = Task.AddFunc("11 23 * * *", func() {
 		var data = Redis.Keys(ctx, "baipiao:ck:*")
 		for _, s := range data.Val() {
 			result := Redis.HGetAll(ctx, s)
@@ -62,7 +69,7 @@ func init() {
 			u, _ := url.Parse("https://jd.com")
 			for _, cookie := range client.GetClient().Jar.Cookies(u) {
 				if cookie.Name == "pt_key" {
-					ck.Printf("已刷新 %s ck", cookie.Name)
+					log.Printf("已刷新 %s ck", cookie.Name)
 					Redis.HSet(ctx, s, "pt_key", cookie.Value)
 				}
 			}
@@ -70,6 +77,6 @@ func init() {
 	})
 	Task.Start()
 	if err != nil {
-		ck.Println(err)
+		log.Println(err)
 	}
 }
