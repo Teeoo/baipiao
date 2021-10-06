@@ -15,14 +15,14 @@ import (
 
 func init() {
 	PathExists("./logs/jd_refresh_ck")
-	loggerFile, err := os.OpenFile(fmt.Sprintf("%s/%s.log", "./logs/jd_refresh_ck", time.Now().Format("2006-01-02-15-04-05")), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Println(err)
-	}
-	log.SetOutput(io.MultiWriter(os.Stdout, loggerFile))
-	log.SetPrefix(fmt.Sprintf("[%s]", "刷新ck"))
-	log.SetFlags(log.Ldate | log.Ltime | log.Llongfile | log.Lshortfile)
-	_, err = Task.AddFunc("11 23 * * *", func() {
+	_, err := Task.AddFunc("11 23 * * *", func() {
+		loggerFile, err := os.OpenFile(fmt.Sprintf("%s/%s.log", "./logs/jd_refresh_ck", time.Now().Format("2006-01-02-15-04-05")), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Println(err)
+		}
+		log.SetOutput(io.MultiWriter(os.Stdout, loggerFile))
+		log.SetPrefix(fmt.Sprintf("[%s]", "刷新ck"))
+		log.SetFlags(log.Ldate | log.Ltime | log.Llongfile | log.Lshortfile)
 		var data = Redis.Keys(ctx, "baipiao:ck:*")
 		for _, s := range data.Val() {
 			result := Redis.HGetAll(ctx, s)

@@ -6,8 +6,9 @@ import (
 	_ "github.com/teeoo/baipiao/gqlgen"
 	_ "github.com/teeoo/baipiao/jd"
 	_ "github.com/teeoo/baipiao/task"
-	"log"
 	"net/http"
+
+	"log"
 	"strconv"
 )
 
